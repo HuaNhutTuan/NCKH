@@ -29,7 +29,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Đã có lỗi xảy ra trên server." });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Tuấn API đang chạy tại http://localhost:${PORT}`);
+});
+app.get('/', (req, res) => {
+  res.send('Server Node.js đang chạy thành công!');
 });
