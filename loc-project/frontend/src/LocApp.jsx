@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -7,10 +7,12 @@ import {
   Wallet, TrendingUp, TrendingDown, Plus, Send, MessageCircle,
   PiggyBank, AlertTriangle, X, Trash2, GraduationCap, Sparkles,
   Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse,
-  MoreHorizontal, Coins, ChevronRight, Lightbulb, Target, CheckCircle2, LogOut,
+  MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
+  Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
+  ShieldCheck, ShieldAlert, Settings, Calendar, Info,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import { transactionsApi, budgetsApi } from "./api";
+import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi } from "./api";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -108,21 +110,27 @@ export default function LocApp() {
   const [tab, setTab] = useState("home");
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState({});
+  const [userSettings, setUserSettings] = useState({ payday_day: 1, emergency_reserve: 0 });
+  const [showSettings, setShowSettings] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [initialAddTab, setInitialAddTab] = useState("manual");
   const [form, setForm] = useState({ type: "expense", cat: "food", amount: "", note: "", date: todayStr() });
 
-  // Tải giao dịch + ngân sách của tài khoản đang đăng nhập từ backend
+  // Tải giao dịch + ngân sách + cài đặt Safe-to-Spend của tài khoản đang đăng nhập
   useEffect(() => {
     let cancelled = false;
     setDataLoading(true);
-    Promise.all([transactionsApi.list(token), budgetsApi.list(token)])
-      .then(([txData, budgetData]) => {
+    Promise.all([transactionsApi.list(token), budgetsApi.list(token), settingsApi.get(token)])
+      .then(([txData, budgetData, settingsData]) => {
         if (cancelled) return;
         setTransactions(
           txData.transactions.map((t) => ({ ...t, cat: t.category, amount: Number(t.amount) }))
         );
         setBudgets(budgetData.budgets);
+        if (settingsData?.settings) {
+          setUserSettings(settingsData.settings);
+        }
       })
       .catch((err) => console.error("Không thể tải dữ liệu:", err.message))
       .finally(() => !cancelled && setDataLoading(false));
@@ -132,7 +140,7 @@ export default function LocApp() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "Chào bạn, mình là Lộc — trợ lý tài chính dành cho sinh viên. Mình có thể giúp bạn lập ngân sách, hiểu các khái niệm tài chính, hoặc nhận xét về chi tiêu tháng này. Bạn muốn bắt đầu từ đâu?",
+      text: "Chào bạn, mình là Tuấn — trợ lý tài chính dành cho sinh viên. Mình có thể giúp bạn lập ngân sách, hiểu các khái niệm tài chính, hoặc nhận xét về chi tiêu tháng này. Bạn muốn bắt đầu từ đâu?",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -164,7 +172,70 @@ export default function LocApp() {
     .filter(([id, limit]) => (stats.byCat[id] || 0) > limit)
     .map(([id]) => catMeta(id).label);
 
+  // ---------- Safe-to-Spend (Hạn mức hàng ngày cho sinh viên) ----------
+  const safeToSpend = useMemo(() => {
+    const todayObj = new Date();
+    const currentDay = todayObj.getDate();
+    const currentYear = todayObj.getFullYear();
+    const currentMonth = todayObj.getMonth();
+
+    const payday = userSettings?.payday_day || 1;
+    const emergencyReserve = Number(userSettings?.emergency_reserve) || 0;
+
+    // Tính ngày nhận trợ cấp / lương tiếp theo
+    let nextPayday;
+    if (currentDay < payday) {
+      nextPayday = new Date(currentYear, currentMonth, payday);
+    } else {
+      nextPayday = new Date(currentYear, currentMonth + 1, payday);
+    }
+
+    const startOfToday = new Date(currentYear, currentMonth, currentDay);
+    const diffMs = nextPayday.getTime() - startOfToday.getTime();
+    const daysRemaining = Math.max(1, Math.round(diffMs / (1000 * 3600 * 24)));
+
+    const today = todayStr();
+    const todayExpenses = transactions
+      .filter((t) => t.type === "expense" && t.date === today)
+      .reduce((s, t) => s + t.amount, 0);
+
+    // Tiền khả dụng = Số dư - Quỹ dự phòng khẩn cấp
+    const usableBalance = Math.max(0, stats.balance - emergencyReserve);
+    // Tổng ngân sách phân bổ cho các ngày còn lại của chu kỳ (đã cộng lại khoản chi hôm nay)
+    const totalAllocated = usableBalance + todayExpenses;
+    const dailyLimit = Math.max(0, Math.round(totalAllocated / daysRemaining));
+    const remainingToday = dailyLimit - todayExpenses;
+    const isOverBudget = remainingToday < 0;
+    const overAmount = isOverBudget ? Math.abs(remainingToday) : 0;
+    const percentSpent = dailyLimit > 0 ? Math.min(100, Math.round((todayExpenses / dailyLimit) * 100)) : (todayExpenses > 0 ? 100 : 0);
+
+    const nextPaydayStr = `${String(nextPayday.getDate()).padStart(2, "0")}/${String(nextPayday.getMonth() + 1).padStart(2, "0")}`;
+
+    return {
+      dailyLimit,
+      todayExpenses,
+      remainingToday,
+      isOverBudget,
+      overAmount,
+      percentSpent,
+      daysRemaining,
+      nextPaydayStr,
+      emergencyReserve,
+      payday,
+    };
+  }, [transactions, stats.balance, userSettings]);
+
   // ---------- actions ----------
+  async function updateSettings(newSettings) {
+    try {
+      const res = await settingsApi.update(token, newSettings);
+      setUserSettings(res.settings);
+      setShowSettings(false);
+    } catch (err) {
+      alert("Không thể lưu cài đặt: " + err.message);
+    }
+  }
+
   async function addTransaction() {
     const amt = parseFloat(form.amount);
     if (!amt || amt <= 0) return;
@@ -182,6 +253,30 @@ export default function LocApp() {
       setShowAdd(false);
     } catch (err) {
       alert(err.message);
+    }
+  }
+
+  // Lưu nhiều giao dịch cùng lúc (từ kết quả AI)
+  async function addMultipleTransactions(txList) {
+    const results = [];
+    for (const tx of txList) {
+      try {
+        const payload = {
+          type: tx.type,
+          category: tx.category,
+          amount: tx.amount,
+          note: tx.note || "(không ghi chú)",
+          date: tx.date,
+        };
+        const { transaction } = await transactionsApi.create(token, payload);
+        results.push({ ...transaction, cat: transaction.category });
+      } catch (err) {
+        console.error("Lỗi lưu giao dịch:", err.message);
+      }
+    }
+    if (results.length > 0) {
+      setTransactions((prev) => [...results.reverse(), ...prev]);
+      setShowAdd(false);
     }
   }
 
@@ -217,7 +312,7 @@ export default function LocApp() {
       .map(([id, val]) => `${catMeta(id).label}: ${fmtVND(val)}`)
       .join(", ");
 
-    const systemPrompt = `Bạn là "Lộc", một trợ lý AI đồng hành giáo dục tài chính cá nhân dành riêng cho sinh viên Việt Nam, tích hợp trong ứng dụng quản lý chi tiêu.
+    const systemPrompt = `Bạn là "Tuấn", một trợ lý AI đồng hành giáo dục tài chính cá nhân dành riêng cho sinh viên Việt Nam, tích hợp trong ứng dụng quản lý chi tiêu.
 Phong cách: gần gũi, khích lệ, nói tiếng Việt tự nhiên, ngắn gọn (dưới 150 từ trừ khi được yêu cầu chi tiết), dùng ví dụ cụ thể, không phán xét.
 Mục tiêu: dạy kiến thức tài chính nền tảng (ngân sách, tiết kiệm, nợ, lãi suất, thói quen chi tiêu) và đưa lời khuyên thực tế phù hợp với thu nhập sinh viên (thường thấp, không ổn định).
 Không đưa lời khuyên đầu tư cụ thể (không gợi ý mã cổ phiếu, tiền mã hoá cụ thể) hay tư vấn pháp lý/thuế; nếu được hỏi, hãy giải thích khái niệm chung và khuyên tìm chuyên gia.
@@ -225,26 +320,18 @@ Dữ liệu tài chính hiện tại của người dùng trong tháng này: Thu
 Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá nhân hoá, nhưng đừng liệt kê lại toàn bộ số liệu nếu người dùng không hỏi trực tiếp.`;
 
     try {
-      const apiMessages = nextMessages.map((m) => ({
-        role: m.role === "assistant" ? "assistant" : "user",
-        content: m.text,
-      }));
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: apiMessages,
-        }),
+      const data = await chatApi.send(token, {
+        messages: nextMessages,
+        systemPrompt,
       });
-      const data = await response.json();
-      const reply = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("\n").trim()
-        || "Xin lỗi, mình chưa nhận được phản hồi rõ ràng. Bạn thử hỏi lại nhé.";
+      const reply =
+        data.reply || "Xin lỗi, mình chưa nhận được phản hồi rõ ràng. Bạn thử hỏi lại nhé.";
       setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
     } catch (e) {
-      setMessages((prev) => [...prev, { role: "assistant", text: "Có lỗi kết nối, bạn thử gửi lại tin nhắn nhé." }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: e.message || "Có lỗi kết nối, bạn thử gửi lại tin nhắn nhé." },
+      ]);
     } finally {
       setChatLoading(false);
     }
@@ -268,8 +355,6 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
         .loc-scroll::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 4px; }
         .ledger-row { border-bottom: 1px solid ${T.paperLine}; }
         .ledger-row:last-child { border-bottom: none; }
-        .tab-btn { transition: color .15s ease; }
-        .chip-btn:hover { background: ${T.teal}14; border-color: ${T.teal}; }
         .send-btn:disabled { opacity: .45; cursor: default; }
         input, select, textarea { font-family: inherit; }
       `}</style>
@@ -287,11 +372,12 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
         <div style={{ padding: "18px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper }}>
           <div>
             <div style={{ fontSize: 12, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.2 }}>Xin chào, {user?.name || "bạn"}</div>
-            <div style={{ fontSize: 21, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark }}>Lộc — Ví sinh viên</div>
+            <div style={{ fontSize: 21, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark }}>Tuấn — Ví sinh viên</div>
           </div>
           <button
             onClick={logout}
             title="Đăng xuất"
+            className="btn-logout"
             style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <LogOut size={16} color="#fff" />
@@ -304,13 +390,29 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
             <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
           )}
           {!dataLoading && tab === "home" && (
-            <HomeTab stats={stats} pieData={pieData} overBudgetCats={overBudgetCats} onAdd={() => setShowAdd(true)} transactions={transactions} />
+            <HomeTab
+              stats={stats}
+              pieData={pieData}
+              overBudgetCats={overBudgetCats}
+              onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+              onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
+              transactions={transactions}
+              safeToSpend={safeToSpend}
+              onOpenSettings={() => setShowSettings(true)}
+            />
           )}
           {!dataLoading && tab === "transactions" && (
-            <TransactionsTab transactions={transactions} onDelete={deleteTx} onAdd={() => setShowAdd(true)} />
+            <TransactionsTab transactions={transactions} onDelete={deleteTx} onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }} />
           )}
           {!dataLoading && tab === "budget" && (
-            <BudgetTab budgets={budgets} onUpdateBudget={updateBudget} byCat={stats.byCat} />
+            <BudgetTab
+              budgets={budgets}
+              onUpdateBudget={updateBudget}
+              byCat={stats.byCat}
+              userSettings={userSettings}
+              onUpdateSettings={updateSettings}
+              safeToSpend={safeToSpend}
+            />
           )}
           {!dataLoading && tab === "learn" && <LearnTab onAsk={(q) => { setTab("chat"); sendChat(q); }} />}
           {!dataLoading && tab === "chat" && (
@@ -335,12 +437,12 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
             return (
               <button
                 key={id}
-                className="tab-btn"
+                className={`tab-btn ${active ? "active" : ""}`}
                 onClick={() => setTab(id)}
                 style={{
                   flex: 1, background: "none", border: "none", cursor: "pointer",
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "4px 2px", color: active ? T.teal : T.inkSoft,
+                  padding: "6px 2px", color: active ? T.teal : T.inkSoft,
                 }}
               >
                 <Icon size={19} strokeWidth={active ? 2.4 : 2} />
@@ -351,7 +453,25 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
         </div>
 
         {showAdd && (
-          <AddTxModal form={form} setForm={setForm} onClose={() => setShowAdd(false)} onSubmit={addTransaction} />
+          <AddTxModal
+            form={form}
+            setForm={setForm}
+            onClose={() => setShowAdd(false)}
+            onSubmit={addTransaction}
+            token={token}
+            onSaveMultiple={addMultipleTransactions}
+            safeToSpend={safeToSpend}
+            initialTab={initialAddTab}
+          />
+        )}
+
+        {showSettings && (
+          <SafeToSpendSettingsModal
+            userSettings={userSettings}
+            onClose={() => setShowSettings(false)}
+            onSave={updateSettings}
+            safeToSpend={safeToSpend}
+          />
         )}
       </div>
     </div>
@@ -359,8 +479,72 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
 }
 
 // ---------------- Home ----------------
-function HomeTab({ stats, pieData, overBudgetCats, onAdd, transactions }) {
+function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings }) {
   const recent = transactions.slice(0, 4);
+
+  // ---------- Period filter for pie chart ----------
+  const [period, setPeriod] = useState("month"); // "week" | "month" | "year"
+  const [offset, setOffset] = useState(0); // 0 = current, -1 = previous, etc.
+
+  const filteredPieData = useMemo(() => {
+    const today = new Date();
+    let filtered;
+    if (period === "week") {
+      // Start of current week (Monday-based), shifted by offset weeks
+      const startOfWeek = new Date(today);
+      const day = today.getDay(); // 0=Sun
+      startOfWeek.setDate(today.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      filtered = transactions.filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "expense" && d >= startOfWeek && d <= endOfWeek;
+      });
+    } else if (period === "month") {
+      const targetYear = today.getFullYear() + Math.floor((today.getMonth() + offset) / 12);
+      const targetMonth = ((today.getMonth() + offset) % 12 + 12) % 12;
+      filtered = transactions.filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "expense" && d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+      });
+    } else {
+      // year
+      const targetYear = today.getFullYear() + offset;
+      filtered = transactions.filter((t) => {
+        const d = new Date(t.date);
+        return t.type === "expense" && d.getFullYear() === targetYear;
+      });
+    }
+    const byCat = {};
+    filtered.forEach((t) => { byCat[t.cat] = (byCat[t.cat] || 0) + t.amount; });
+    return Object.entries(byCat).map(([id, val]) => ({
+      name: catMeta(id).label, value: val, color: catMeta(id).color,
+    }));
+  }, [period, offset, transactions]);
+
+  // Label for current period window
+  const periodLabel = useMemo(() => {
+    const today = new Date();
+    if (period === "week") {
+      const startOfWeek = new Date(today);
+      const day = today.getDay();
+      startOfWeek.setDate(today.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      const fmt = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
+      return offset === 0 ? "Tuần này" : `${fmt(startOfWeek)}–${fmt(endOfWeek)}`;
+    } else if (period === "month") {
+      const d = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+      if (offset === 0) return "Tháng này";
+      return `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`;
+    } else {
+      const yr = today.getFullYear() + offset;
+      return offset === 0 ? "Năm nay" : `Năm ${yr}`;
+    }
+  }, [period, offset]);
+
   return (
     <div>
       <div style={{
@@ -383,20 +567,104 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, transactions }) {
         </div>
       </div>
 
-      <button
-        onClick={onAdd}
-        style={{
-          marginTop: 12, width: "100%", background: T.gold, color: "#3A2A08", border: "none",
-          borderRadius: 12, padding: "11px 16px", fontWeight: 600, fontSize: 14, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-        }}
-      >
-        <Plus size={17} /> Thêm giao dịch
-      </button>
+      {/* Thẻ Hạn mức hôm nay (Safe-to-Spend) */}
+      <div style={{
+        marginTop: 12, background: T.card, borderRadius: 16, padding: "14px 16px",
+        border: `1px solid ${safeToSpend?.isOverBudget ? T.brick : T.border}`,
+        position: "relative"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {safeToSpend?.isOverBudget ? (
+              <ShieldAlert size={17} color={T.brick} />
+            ) : (
+              <ShieldCheck size={17} color={T.teal} />
+            )}
+            <span style={{ fontSize: 13, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark }}>
+              Hạn mức hôm nay (Safe-to-Spend)
+            </span>
+          </div>
+          <button
+            onClick={onOpenSettings}
+            title="Cài đặt kỳ nhận tiền & quỹ dự phòng"
+            style={{
+              display: "flex", alignItems: "center", gap: 3, background: "none",
+              border: "none", cursor: "pointer", color: T.inkSoft, fontSize: 11, padding: "2px 4px"
+            }}
+          >
+            <Settings size={12} />
+            <span>Cài đặt</span>
+          </button>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{
+            fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif",
+            color: safeToSpend?.isOverBudget ? T.brick : T.tealDark
+          }}>
+            {safeToSpend?.isOverBudget ? `-${fmtVND(safeToSpend.overAmount)}` : fmtVND(safeToSpend?.remainingToday || 0)}
+          </span>
+          <span style={{ fontSize: 11, color: safeToSpend?.isOverBudget ? T.brick : T.inkSoft, fontWeight: 500 }}>
+            {safeToSpend?.isOverBudget ? "vượt hạn mức hôm nay!" : "còn được tiêu hôm nay"}
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ marginTop: 8, marginBottom: 8 }}>
+          <ProgressBar
+            value={safeToSpend?.todayExpenses || 0}
+            max={safeToSpend?.dailyLimit || 1}
+            color={safeToSpend?.percentSpent > 80 ? T.gold : T.teal}
+          />
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.inkSoft }}>
+          <span>Đã chi: <strong>{fmtVND(safeToSpend?.todayExpenses || 0)}</strong> / {fmtVND(safeToSpend?.dailyLimit || 0)}</span>
+          <span>⏳ Còn <strong>{safeToSpend?.daysRemaining} ngày</strong> (ngày {safeToSpend?.nextPaydayStr})</span>
+        </div>
+      </div>
+
+      {/* Cảnh báo nếu đã chi vượt hạn mức hôm nay */}
+      {safeToSpend?.isOverBudget && (
+        <div style={{
+          marginTop: 10, background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 12,
+          padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start",
+        }}>
+          <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
+          <div style={{ fontSize: 12, color: "#7B2317", lineHeight: 1.4 }}>
+            <strong>Nhắc nhở chi tiêu hôm nay:</strong> Bạn đã chi vượt hạn mức an toàn <strong>{fmtVND(safeToSpend.overAmount)}</strong>. Hãy tiết chế các khoản chi trong <strong>{safeToSpend.daysRemaining} ngày tới</strong> để tránh cạn ví trước ngày nhận trợ cấp/lương ({safeToSpend.nextPaydayStr})!
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <button
+          onClick={onAdd}
+          className="btn-gold"
+          style={{
+            flex: 1.2, background: T.gold, color: "#3A2A08", border: "none",
+            borderRadius: 12, padding: "11px 12px", fontWeight: 600, fontSize: 13.5, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}
+        >
+          <Plus size={16} /> Thêm giao dịch
+        </button>
+        <button
+          onClick={onOpenVoice}
+          style={{
+            flex: 1, background: T.teal, color: "#fff", border: "none",
+            borderRadius: 12, padding: "11px 12px", fontWeight: 600, fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}
+          title="Nói để cộng/trừ trực tiếp vào giao dịch ngay lập tức"
+        >
+          <Mic size={16} /> Ghi bằng giọng nói
+        </button>
+      </div>
 
       {overBudgetCats.length > 0 && (
         <div style={{
-          marginTop: 14, background: "#F4E3DE", border: `1px solid ${T.brick}55`, borderRadius: 12,
+          marginTop: 12, background: "#F4E3DE", border: `1px solid ${T.brick}55`, borderRadius: 12,
           padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start",
         }}>
           <AlertTriangle size={16} color={T.brick} style={{ marginTop: 1, flexShrink: 0 }} />
@@ -407,23 +675,54 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, transactions }) {
       )}
 
       <div style={{ marginTop: 20 }}>
-        <SectionTitle label="Chi tiêu theo danh mục · tháng này" />
-        {pieData.length === 0 ? (
-          <EmptyNote text="Chưa có khoản chi nào trong tháng này." />
+        {/* Header: title + period pills */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.tealDark }}>Chi tiêu theo danh mục</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["week", "month", "year"].map((p) => (
+              <button
+                key={p}
+                onClick={() => { setPeriod(p); setOffset(0); }}
+                style={{
+                  fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 20, border: "none", cursor: "pointer",
+                  background: period === p ? T.tealDark : T.border,
+                  color: period === p ? "#fff" : T.inkSoft,
+                  transition: "all 0.15s",
+                }}
+              >
+                {p === "week" ? "Tuần" : p === "month" ? "Tháng" : "Năm"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sub-header: prev/next navigator */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <button onClick={() => setOffset((o) => o - 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: T.inkSoft, display: "flex" }}>
+            <ChevronLeft size={16} />
+          </button>
+          <span style={{ fontSize: 12, fontWeight: 500, color: T.inkSoft }}>{periodLabel}</span>
+          <button onClick={() => setOffset((o) => Math.min(o + 1, 0))} style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: offset >= 0 ? T.border : T.inkSoft, display: "flex" }} disabled={offset >= 0}>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        {filteredPieData.length === 0 ? (
+          <EmptyNote text={`Chưa có khoản chi nào ${period === "week" ? "trong tuần" : period === "month" ? "trong tháng" : "trong năm"} này.`} />
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 128, height: 128, flexShrink: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={34} outerRadius={58} paddingAngle={2}>
-                    {pieData.map((d, i) => <Cell key={i} fill={d.color} stroke={T.paper} strokeWidth={2} />)}
+                  <Pie data={filteredPieData} dataKey="value" nameKey="name" innerRadius={34} outerRadius={58} paddingAngle={2}>
+                    {filteredPieData.map((d, i) => <Cell key={i} fill={d.color} stroke={T.paper} strokeWidth={2} />)}
                   </Pie>
                   <RTooltip formatter={(v) => fmtVND(v)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-              {pieData.sort((a, b) => b.value - a.value).slice(0, 5).map((d) => (
+              {[...filteredPieData].sort((a, b) => b.value - a.value).slice(0, 5).map((d) => (
                 <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
                   <span style={{ flex: 1, color: T.inkSoft }}>{d.name}</span>
@@ -466,7 +765,12 @@ function TxRow({ t, onDelete }) {
         {t.type === "income" ? "+" : "-"}{fmtVND(t.amount)}
       </div>
       {onDelete && (
-        <button onClick={() => onDelete(t.id)} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 2 }}>
+        <button
+          onClick={() => onDelete(t.id)}
+          className="btn-delete"
+          title="Xóa giao dịch"
+          style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 5, borderRadius: 6 }}
+        >
           <Trash2 size={14} />
         </button>
       )}
@@ -481,7 +785,11 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 12 }}>
         <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Tất cả giao dịch</div>
-        <button onClick={onAdd} style={{ background: T.teal, color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+        <button
+          onClick={onAdd}
+          className="btn-teal"
+          style={{ background: T.teal, color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+        >
           <Plus size={14} /> Thêm
         </button>
       </div>
@@ -494,7 +802,7 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
 }
 
 // ---------------- Budget ----------------
-function BudgetTab({ budgets, onUpdateBudget, byCat }) {
+function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSettings, safeToSpend }) {
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState("");
 
@@ -513,7 +821,39 @@ function BudgetTab({ budgets, onUpdateBudget, byCat }) {
 
   return (
     <div>
-      <div style={{ marginTop: 12, marginBottom: 4, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Ngân sách theo danh mục</div>
+      {/* Thẻ Cấu hình Safe-to-Spend */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px", marginTop: 12, marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+          <ShieldCheck size={18} color={T.teal} />
+          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark }}>
+            Hạn mức Safe-to-Spend hàng ngày
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 12, lineHeight: 1.4 }}>
+          Số tiền tối đa bạn được phép tiêu trong ngày hôm nay để không hết tiền trước kỳ nhận trợ cấp hoặc lương tiếp theo.
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: T.paper, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 10.5, color: T.inkSoft }}>Hạn mức hôm nay</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark, fontFamily: "'Space Grotesk',sans-serif" }}>
+              {fmtVND(safeToSpend?.dailyLimit || 0)}
+            </div>
+            <div style={{ fontSize: 10, color: T.inkSoft }}>{safeToSpend?.isOverBudget ? "⚠️ Đã vượt mức" : `Còn lại: ${fmtVND(safeToSpend?.remainingToday || 0)}`}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10.5, color: T.inkSoft }}>Kỳ nhận tiền tới</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.goldDark, fontFamily: "'Space Grotesk',sans-serif" }}>
+              {safeToSpend?.nextPaydayStr}
+            </div>
+            <div style={{ fontSize: 10, color: T.inkSoft }}>Còn {safeToSpend?.daysRemaining} ngày</div>
+          </div>
+        </div>
+
+        <SafeToSpendForm userSettings={userSettings} onUpdateSettings={onUpdateSettings} />
+      </div>
+
+      <div style={{ marginBottom: 4, fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Ngân sách theo danh mục</div>
       <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 14 }}>Đặt giới hạn chi tiêu hàng tháng để kiểm soát tốt hơn.</div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -537,12 +877,21 @@ function BudgetTab({ budgets, onUpdateBudget, byCat }) {
                       autoFocus type="number" value={draft} onChange={(e) => setDraft(e.target.value)}
                       style={{ width: 90, fontSize: 12, padding: "5px 6px", borderRadius: 6, border: `1px solid ${T.border}` }}
                     />
-                    <button onClick={() => saveEdit(c.id)} style={{ background: T.teal, border: "none", borderRadius: 6, padding: "0 8px", color: "#fff", cursor: "pointer" }}>
+                    <button
+                      onClick={() => saveEdit(c.id)}
+                      className="btn-teal-sm"
+                      title="Lưu"
+                      style={{ background: T.teal, border: "none", borderRadius: 6, padding: "0 8px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
                       <CheckCircle2 size={16} />
                     </button>
                   </div>
                 ) : (
-                  <button onClick={() => startEdit(c.id)} style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", color: T.inkSoft }}>
+                  <button
+                    onClick={() => startEdit(c.id)}
+                    className="btn-edit"
+                    style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", color: T.inkSoft }}
+                  >
                     Sửa
                   </button>
                 )}
@@ -583,14 +932,14 @@ function LearnTab({ onAsk }) {
         ))}
       </div>
 
-      <SectionTitle label="Hỏi Lộc thêm về chủ đề này" />
+      <SectionTitle label="Hỏi Tuấn thêm về chủ đề này" />
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {SUGGESTED_PROMPTS.map((q) => (
           <button key={q} onClick={() => onAsk(q)} className="chip-btn" style={{
             textAlign: "left", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
             padding: "10px 12px", fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", color: T.ink,
           }}>
-            {q} <ChevronRight size={14} color={T.inkSoft} />
+            <span>{q}</span> <ChevronRight size={14} className="chip-arrow" color={T.inkSoft} />
           </button>
         ))}
       </div>
@@ -604,7 +953,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ marginTop: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
         <Target size={16} color={T.teal} />
-        <div style={{ fontSize: 12, color: T.inkSoft }}>Lộc biết dữ liệu chi tiêu của bạn để đưa lời khuyên phù hợp.</div>
+        <div style={{ fontSize: 12, color: T.inkSoft }}>Tuấn biết dữ liệu chi tiêu của bạn để đưa lời khuyên phù hợp.</div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
@@ -626,7 +975,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
         {chatLoading && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div style={{ padding: "9px 12px", borderRadius: 14, background: T.card, border: `1px solid ${T.border}`, fontSize: 13, color: T.inkSoft }}>
-              Lộc đang soạn câu trả lời…
+              Tuấn đang soạn câu trả lời…
             </div>
           </div>
         )}
@@ -639,7 +988,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
-            placeholder="Hỏi Lộc về tài chính của bạn..."
+            placeholder="Hỏi Tuấn về tài chính của bạn..."
             style={{
               flex: 1, borderRadius: 20, border: `1px solid ${T.border}`, padding: "10px 14px",
               fontSize: 13, outline: "none", background: T.card, color: T.ink,
@@ -662,77 +1011,901 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
   );
 }
 
-// ---------------- Add transaction modal ----------------
-function AddTxModal({ form, setForm, onClose, onSubmit }) {
+// ---------------- Add transaction modal (4 tabs: manual / text / voice / image) ----------------
+function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, safeToSpend, initialTab = "manual" }) {
+  const [inputTab, setInputTab] = useState(initialTab); // "manual" | "text" | "voice" | "image"
+  const [nlText, setNlText] = useState(""); // natural language input
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [autoDirectRecord, setAutoDirectRecord] = useState(true); // Tự động cộng/trừ trực tiếp vào sổ
+  const [voiceStatus, setVoiceStatus] = useState("idle"); // "idle" | "listening" | "processing" | "done" | "error"
+  const [voiceSuccessTx, setVoiceSuccessTx] = useState(null);
+  const latestTranscriptRef = useRef("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null); // parsed result from AI
+  const [aiError, setAiError] = useState("");
+  const [editableTxs, setEditableTxs] = useState([]); // editable list in confirm panel
+  const [splitPeople, setSplitPeople] = useState(2);
+  const [saving, setSaving] = useState(false);
+  const recognitionRef = useRef(null);
+  const imageInputRef = useRef(null);
+
+  function handleManualSubmit() {
+    const amt = parseFloat(form.amount);
+    if (!amt || amt <= 0) return;
+    if (form.type === "expense" && safeToSpend && amt > safeToSpend.remainingToday) {
+      const confirmSave = window.confirm(
+        `Cảnh báo Safe-to-Spend: Khoản chi này (${fmtVND(amt)}) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: ${safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}). Bạn còn ${safeToSpend.daysRemaining} ngày nữa mới đến kỳ nhận tiền (${safeToSpend.nextPaydayStr}). Bạn có chắc chắn muốn ghi nhận không?`
+      );
+      if (!confirmSave) return;
+    }
+    onSubmit();
+  }
+
+  const TABS = [
+    { id: "manual", label: "Thủ công", Icon: Edit3 },
+    { id: "text", label: "Câu lệnh", Icon: Type },
+    { id: "voice", label: "Giọng nói", Icon: Mic },
+    { id: "image", label: "Hình ảnh", Icon: Camera },
+  ];
+
+  // Check browser support for Web Speech API
+  const speechSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  // ── Voice: Tự động cộng trừ trực tiếp vào giao dịch ──────────────────────────
+  async function handleVoiceFinished(spokenText) {
+    const text = (spokenText || voiceTranscript || nlText).trim();
+    if (!text) {
+      setVoiceStatus("idle");
+      return;
+    }
+
+    if (autoDirectRecord) {
+      setVoiceStatus("processing");
+      setAiLoading(true);
+      setAiError("");
+
+      try {
+        const result = await multimodalApi.parseText(token, text);
+        if (!result.transactions || result.transactions.length === 0) {
+          setAiError("Không nhận diện được số tiền hoặc danh mục. Bạn thử nói lại nhé (VD: 'ăn sáng 50k').");
+          setVoiceStatus("error");
+          setAiLoading(false);
+          return;
+        }
+
+        // Lưu trực tiếp vào cơ sở dữ liệu và cộng/trừ ngay vào số dư & giao dịch
+        await onSaveMultiple(result.transactions);
+        setVoiceSuccessTx(result.transactions[0]);
+        setVoiceStatus("done");
+      } catch (err) {
+        setAiError(err.message || "Lỗi xử lý câu lệnh.");
+        setVoiceStatus("error");
+      } finally {
+        setAiLoading(false);
+      }
+    } else {
+      // Chế độ xem trước
+      setNlText(text);
+      runAiParse();
+    }
+  }
+
+  function startListening() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "vi-VN";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    setVoiceTranscript("");
+    latestTranscriptRef.current = "";
+    setVoiceStatus("listening");
+    setVoiceSuccessTx(null);
+    setAiError("");
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results).map((r) => r[0].transcript).join("");
+      setVoiceTranscript(transcript);
+      latestTranscriptRef.current = transcript;
+      if (e.results[e.results.length - 1].isFinal) {
+        setNlText(transcript);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      setIsListening(false);
+      if (e.error !== "no-speech") {
+        setAiError("Không thu được âm thanh. Hãy thử lại.");
+        setVoiceStatus("error");
+      } else {
+        setVoiceStatus("idle");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      const text = latestTranscriptRef.current?.trim();
+      if (text) {
+        handleVoiceFinished(text);
+      } else {
+        setVoiceStatus("idle");
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+    }
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
+  // Tự động bật mic khi mở trực tiếp tab giọng nói
+  useEffect(() => {
+    if (initialTab === "voice" && speechSupported) {
+      const timer = setTimeout(() => {
+        startListening();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [initialTab]);
+
+  // ── Image preview ────────────────────────────────────────────────────────────
+  function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setAiResult(null);
+    setAiError("");
+  }
+
+  // ── AI parse ─────────────────────────────────────────────────────────────────
+  async function runAiParse() {
+    setAiLoading(true);
+    setAiError("");
+    setAiResult(null);
+    try {
+      let result;
+      if (inputTab === "image" && imageFile) {
+        result = await multimodalApi.parseImage(token, imageFile);
+      } else {
+        const text = inputTab === "voice" ? voiceTranscript || nlText : nlText;
+        if (!text.trim()) { setAiError("Vui lòng nhập câu lệnh."); setAiLoading(false); return; }
+        result = await multimodalApi.parseText(token, text);
+      }
+
+      if (!result.transactions || result.transactions.length === 0) {
+        setAiError("Không tìm thấy thông tin tài chính rõ ràng. Hãy thử mô tả cụ thể hơn.");
+        setAiLoading(false);
+        return;
+      }
+
+      setAiResult(result);
+      setEditableTxs(result.transactions.map((t, i) => ({ ...t, _id: i })));
+      if (result.groupExpense?.detected && result.groupExpense.suggestedPeople > 1) {
+        setSplitPeople(result.groupExpense.suggestedPeople);
+      }
+    } catch (err) {
+      setAiError(err.message || "Có lỗi xảy ra khi gọi AI.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  // ── Save confirmed transactions ───────────────────────────────────────────────
+  async function saveConfirmed(useSplit = false) {
+    setSaving(true);
+    const toSave = editableTxs.map((t) => ({
+      ...t,
+      amount: useSplit ? Math.round(t.amount / splitPeople) : t.amount,
+      note: useSplit ? `${t.note} (1/${splitPeople} người)` : t.note,
+    }));
+    await onSaveMultiple(toSave);
+    setSaving(false);
+  }
+
   const cats = form.type === "expense" ? EXPENSE_CATS : INCOME_CATS;
+
   return (
-    <div style={{
-      position: "absolute", inset: 0, background: "#20302Cb0", display: "flex",
-      alignItems: "flex-end", zIndex: 20,
-    }}>
-      <div style={{ width: "100%", background: T.paper, borderRadius: "18px 18px 0 0", padding: "18px 20px 22px", border: `1px solid ${T.border}` }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+    <div style={{ position: "absolute", inset: 0, background: "#20302Cb0", display: "flex", alignItems: "flex-end", zIndex: 20 }}>
+      <div style={{ width: "100%", background: T.paper, borderRadius: "18px 18px 0 0", border: `1px solid ${T.border}`, maxHeight: "90vh", overflowY: "auto" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 10px" }}>
           <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Thêm giao dịch</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft }}><X size={20} /></button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
+            <X size={20} />
+          </button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {["expense", "income"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setForm((f) => ({ ...f, type: t, cat: t === "expense" ? "food" : "allowance" }))}
-              style={{
-                flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
-                border: `1px solid ${form.type === t ? T.teal : T.border}`,
-                background: form.type === t ? T.teal : T.card,
-                color: form.type === t ? "#fff" : T.ink,
-              }}
-            >
-              {t === "expense" ? "Chi tiêu" : "Thu nhập"}
-            </button>
-          ))}
+        {/* Input-mode tabs */}
+        <div style={{ display: "flex", gap: 6, padding: "0 20px 14px", borderBottom: `1px solid ${T.border}` }}>
+          {TABS.map(({ id, label, Icon }) => {
+            const isVoiceDisabled = id === "voice" && !speechSupported;
+            const active = inputTab === id;
+            return (
+              <button
+                key={id}
+                disabled={isVoiceDisabled}
+                onClick={() => { setInputTab(id); setAiResult(null); setAiError(""); }}
+                title={isVoiceDisabled ? "Trình duyệt không hỗ trợ Voice" : label}
+                style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                  padding: "7px 4px", borderRadius: 10, cursor: isVoiceDisabled ? "not-allowed" : "pointer",
+                  border: `1px solid ${active ? T.teal : T.border}`,
+                  background: active ? T.teal + "18" : T.card,
+                  color: isVoiceDisabled ? T.border : active ? T.teal : T.inkSoft,
+                  opacity: isVoiceDisabled ? 0.45 : 1,
+                  fontSize: 10, fontWeight: active ? 700 : 500,
+                }}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
-          {cats.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setForm((f) => ({ ...f, cat: c.id }))}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
-                borderRadius: 10, cursor: "pointer", border: `1px solid ${form.cat === c.id ? c.color : T.border}`,
-                background: form.cat === c.id ? c.color + "22" : T.card,
-              }}
-            >
-              <c.Icon size={16} color={c.color} />
-              <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center" }}>{c.label}</span>
-            </button>
-          ))}
+        <div style={{ padding: "14px 20px 22px" }}>
+
+          {/* ── TAB: Manual (original form) ────────────────────────── */}
+          {inputTab === "manual" && (
+            <>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                {["expense", "income"].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setForm((f) => ({ ...f, type: t, cat: t === "expense" ? "food" : "allowance" }))}
+                    style={{
+                      flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                      border: `1px solid ${form.type === t ? T.teal : T.border}`,
+                      background: form.type === t ? T.teal : T.card,
+                      color: form.type === t ? "#fff" : T.ink,
+                    }}
+                  >
+                    {t === "expense" ? "Chi tiêu" : "Thu nhập"}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+                {cats.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setForm((f) => ({ ...f, cat: c.id }))}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
+                      borderRadius: 10, cursor: "pointer",
+                      border: `1px solid ${form.cat === c.id ? c.color : T.border}`,
+                      background: form.cat === c.id ? c.color + "22" : T.card,
+                    }}
+                  >
+                    <c.Icon size={16} color={c.color} />
+                    <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center" }}>{c.label}</span>
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number" placeholder="Số tiền (VND)" value={form.amount}
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, marginBottom: 8, background: T.card, color: T.ink }}
+              />
+              {form.type === "expense" && safeToSpend && Number(form.amount) > 0 && Number(form.amount) > safeToSpend.remainingToday && (
+                <div style={{
+                  background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 10,
+                  padding: "10px 12px", marginBottom: 8, display: "flex", gap: 8, alignItems: "flex-start"
+                }}>
+                  <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <div style={{ fontSize: 11.5, color: "#7B2317", lineHeight: 1.4 }}>
+                    <strong>Cảnh báo vượt hạn mức Safe-to-Spend!</strong><br />
+                    Khoản chi này (<strong>{fmtVND(Number(form.amount))}</strong>) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: <strong>{safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}</strong>). Còn <strong>{safeToSpend.daysRemaining} ngày</strong> nữa mới đến kỳ nhận tiền ({safeToSpend.nextPaydayStr}).
+                  </div>
+                </div>
+              )}
+              <input
+                type="text" placeholder="Ghi chú (vd: Ăn trưa với bạn)" value={form.note}
+                onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 8, background: T.card, color: T.ink }}
+              />
+              <input
+                type="date" value={form.date}
+                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 14, background: T.card, color: T.ink }}
+              />
+              <button
+                onClick={handleManualSubmit}
+                style={{ width: "100%", background: T.gold, border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 14, color: "#3A2A08", cursor: "pointer" }}
+              >
+                Lưu giao dịch
+              </button>
+            </>
+          )}
+
+          {/* ── TAB: Natural Language Text ──────────────────────────── */}
+          {inputTab === "text" && !aiResult && (
+            <>
+              <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 8 }}>
+                Mô tả giao dịch bằng lời tự nhiên, AI sẽ tự bóc tách:
+              </div>
+              <div style={{ fontSize: 11, color: T.teal, background: T.teal + "12", borderRadius: 8, padding: "6px 10px", marginBottom: 10 }}>
+                Ví dụ: <em>"ăn bún bò 45k"</em> · <em>"nhận học bổng 2 triệu"</em> · <em>"lẩu cùng 4 người hết 480k"</em>
+              </div>
+              <textarea
+                value={nlText}
+                onChange={(e) => setNlText(e.target.value)}
+                placeholder="Nhập câu lệnh tài chính của bạn..."
+                rows={3}
+                style={{
+                  width: "100%", padding: "10px 12px", borderRadius: 10,
+                  border: `1px solid ${T.border}`, fontSize: 13, resize: "none",
+                  background: T.card, color: T.ink, marginBottom: 10, fontFamily: "inherit",
+                }}
+              />
+              {aiError && <div style={{ color: T.brick, fontSize: 12, marginBottom: 8 }}>{aiError}</div>}
+              <button
+                onClick={runAiParse}
+                disabled={aiLoading || !nlText.trim()}
+                style={{
+                  width: "100%", background: aiLoading || !nlText.trim() ? T.border : T.teal,
+                  border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700,
+                  fontSize: 13, color: "#fff", cursor: aiLoading || !nlText.trim() ? "default" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {aiLoading ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> Đang phân tích...</> : <><Wand2 size={15} /> Phân tích với AI</>}
+              </button>
+            </>
+          )}
+
+          {/* ── TAB: Voice (Ghi nhận giọng nói trực tiếp vào sổ) ─────── */}
+          {inputTab === "voice" && !aiResult && (
+            <div>
+              {/* Option toggle: Tự động cộng/trừ trực tiếp */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: T.teal + "12", border: `1px solid ${T.teal}33`, borderRadius: 10,
+                padding: "8px 12px", marginBottom: 14
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles size={15} color={T.teal} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: T.tealDark }}>
+                    Tự động cộng/trừ trực tiếp vào giao dịch
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={autoDirectRecord}
+                  onChange={(e) => setAutoDirectRecord(e.target.checked)}
+                  style={{ cursor: "pointer", width: 16, height: 16, accentColor: T.teal }}
+                />
+              </div>
+
+              {/* Màn hình khi đã ghi nhận thành công */}
+              {voiceStatus === "done" && voiceSuccessTx ? (
+                <div style={{
+                  background: "#E8F5E9", border: "1px solid #A5D6A7", borderRadius: 14,
+                  padding: "18px 16px", textAlign: "center", marginBottom: 12
+                }}>
+                  <CheckCircle2 size={40} color="#2E7D32" style={{ margin: "0 auto 8px" }} />
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#1B5E20", marginBottom: 4 }}>
+                    Đã ghi nhận giao dịch thành công!
+                  </div>
+                  <div style={{ fontSize: 12, color: "#2E7D32", marginBottom: 14 }}>
+                    {voiceSuccessTx.type === "expense"
+                      ? "Đã trừ trực tiếp vào số dư và danh mục chi tiêu của bạn."
+                      : "Đã cộng trực tiếp vào số dư và danh mục thu nhập của bạn."}
+                  </div>
+
+                  <div style={{
+                    background: "#fff", borderRadius: 10, padding: "12px 14px", border: "1px solid #C8E6C9",
+                    display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <IconBadge Icon={catMeta(voiceSuccessTx.category).Icon} color={catMeta(voiceSuccessTx.category).color} size={36} />
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{voiceSuccessTx.note}</div>
+                        <div style={{ fontSize: 11, color: T.inkSoft }}>
+                          {catMeta(voiceSuccessTx.category).label} · {voiceSuccessTx.date}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: voiceSuccessTx.type === "expense" ? T.brick : T.teal }}>
+                      {voiceSuccessTx.type === "expense" ? "-" : "+"}{fmtVND(voiceSuccessTx.amount)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={startListening}
+                      style={{
+                        flex: 1.2, padding: "10px 0", borderRadius: 10, border: "none",
+                        background: T.teal, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+                      }}
+                    >
+                      <Mic size={15} /> Nói tiếp khoản khác
+                    </button>
+                    <button
+                      onClick={onClose}
+                      style={{
+                        flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.border}`,
+                        background: T.card, color: T.ink, fontSize: 12.5, fontWeight: 600, cursor: "pointer"
+                      }}
+                    >
+                      Xem giao dịch
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Màn hình ghi âm */
+                <div style={{ textAlign: "center", padding: "10px 0 14px" }}>
+                  <button
+                    onClick={isListening ? stopListening : startListening}
+                    disabled={voiceStatus === "processing"}
+                    style={{
+                      width: 76, height: 76, borderRadius: "50%", border: "none", cursor: voiceStatus === "processing" ? "default" : "pointer",
+                      background: isListening ? T.brick : voiceStatus === "processing" ? T.border : T.teal,
+                      color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                      margin: "0 auto 12px",
+                      boxShadow: isListening ? `0 0 0 10px ${T.brick}33` : "0 4px 14px rgba(31,111,99,0.25)",
+                      transition: "all 0.3s",
+                    }}
+                  >
+                    {voiceStatus === "processing" ? (
+                      <Loader2 size={32} style={{ animation: "spin 1s linear infinite" }} />
+                    ) : isListening ? (
+                      <MicOff size={32} />
+                    ) : (
+                      <Mic size={32} />
+                    )}
+                  </button>
+
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: isListening ? T.brick : T.tealDark, marginBottom: 6 }}>
+                    {voiceStatus === "processing"
+                      ? "⚡ Đang xử lý & cộng trừ trực tiếp vào giao dịch..."
+                      : isListening
+                      ? "Đang nghe bạn nói… (nói xong dừng 1s hoặc nhấn micro)"
+                      : "Nhấn vào micro để nói"}
+                  </div>
+
+                  <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 12 }}>
+                    Ví dụ: <em>"ăn sáng 50k"</em> · <em>"uống cafe 25k"</em> · <em>"đổ xăng 50k"</em> · <em>"nhận lương 2 triệu"</em>
+                  </div>
+
+                  {voiceTranscript && (
+                    <div style={{
+                      background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
+                      padding: "10px 14px", fontSize: 13, color: T.ink, textAlign: "left",
+                      fontStyle: "italic", marginBottom: 10, boxShadow: "inset 0 1px 3px rgba(0,0,0,0.04)"
+                    }}>
+                      "{voiceTranscript}"
+                    </div>
+                  )}
+
+                  {aiError && (
+                    <div style={{
+                      background: "#FFF2EE", border: `1px solid ${T.brick}66`, borderRadius: 8,
+                      padding: "8px 10px", color: T.brick, fontSize: 12, marginBottom: 10
+                    }}>
+                      {aiError}
+                    </div>
+                  )}
+
+                  {/* Nút phân tích nếu người dùng tắt tự động lưu */}
+                  {!autoDirectRecord && (voiceTranscript || nlText) && !isListening && (
+                    <button
+                      onClick={runAiParse}
+                      disabled={aiLoading}
+                      style={{
+                        width: "100%", background: aiLoading ? T.border : T.teal,
+                        border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700,
+                        fontSize: 13, color: "#fff", cursor: aiLoading ? "default" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      }}
+                    >
+                      {aiLoading ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> Đang phân tích...</> : <><Wand2 size={15} /> Xem lại với AI</>}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: Image / OCR ────────────────────────────────────── */}
+          {inputTab === "image" && !aiResult && (
+            <>
+              <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
+              {!imagePreview ? (
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  style={{
+                    width: "100%", padding: "30px 0", border: `2px dashed ${T.border}`,
+                    borderRadius: 12, background: T.card, cursor: "pointer",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                    color: T.inkSoft, marginBottom: 10,
+                  }}
+                >
+                  <ImagePlus size={32} color={T.teal} />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>Chọn ảnh hóa đơn / bill CK</span>
+                  <span style={{ fontSize: 11 }}>JPEG, PNG, WebP · Tối đa 10MB</span>
+                </button>
+              ) : (
+                <div style={{ marginBottom: 10, position: "relative" }}>
+                  <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 200, objectFit: "contain", background: "#eee" }} />
+                  <button
+                    onClick={() => { setImageFile(null); setImagePreview(null); setAiResult(null); setAiError(""); }}
+                    style={{
+                      position: "absolute", top: 6, right: 6, background: T.brick, border: "none",
+                      borderRadius: "50%", width: 24, height: 24, cursor: "pointer", color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              {aiError && <div style={{ color: T.brick, fontSize: 12, marginBottom: 8 }}>{aiError}</div>}
+              {imageFile && (
+                <button
+                  onClick={runAiParse}
+                  disabled={aiLoading}
+                  style={{
+                    width: "100%", background: aiLoading ? T.border : T.teal,
+                    border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700,
+                    fontSize: 13, color: "#fff", cursor: aiLoading ? "default" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}
+                >
+                  {aiLoading ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> Đang phân tích ảnh...</> : <><Wand2 size={15} /> Phân tích hóa đơn</>}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* ── AI Confirm Panel (shared across text/voice/image tabs) ── */}
+          {aiResult && (
+            <AiConfirmPanel
+              aiResult={aiResult}
+              editableTxs={editableTxs}
+              setEditableTxs={setEditableTxs}
+              splitPeople={splitPeople}
+              setSplitPeople={setSplitPeople}
+              saving={saving}
+              onBack={() => setAiResult(null)}
+              onSave={saveConfirmed}
+              safeToSpend={safeToSpend}
+            />
+          )}
+
         </div>
+      </div>
+      <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+    </div>
+  );
+}
 
-        <input
-          type="number" placeholder="Số tiền (VND)" value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, marginBottom: 8, background: T.card, color: T.ink }}
-        />
-        <input
-          type="text" placeholder="Ghi chú (vd: Ăn trưa với bạn)" value={form.note}
-          onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 8, background: T.card, color: T.ink }}
-        />
-        <input
-          type="date" value={form.date}
-          onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-          style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 13, marginBottom: 14, background: T.card, color: T.ink }}
-        />
+// ── AI Confirm Panel component ────────────────────────────────────────────────
+function AiConfirmPanel({ aiResult, editableTxs, setEditableTxs, splitPeople, setSplitPeople, saving, onBack, onSave, safeToSpend }) {
+  const { groupExpense, rawSummary, confidence } = aiResult;
+  const showSplit = groupExpense?.detected;
 
+  function updateTx(idx, field, value) {
+    setEditableTxs((prev) => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
+  }
+  function removeTx(idx) {
+    setEditableTxs((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  const confidenceColor = confidence === "high" ? T.teal : confidence === "medium" ? T.gold : T.brick;
+  const confidenceLabel = confidence === "high" ? "Độ chính xác cao" : confidence === "medium" ? "Độ chính xác trung bình" : "Độ chính xác thấp — vui lòng kiểm tra";
+
+  // Tính tổng chi phí dự kiến lưu
+  const pendingExpenseTotal = editableTxs
+    .filter((t) => t.type === "expense")
+    .reduce((s, t) => s + (showSplit ? Math.round(t.amount / splitPeople) : t.amount), 0);
+  const willExceedSafe = safeToSpend && pendingExpenseTotal > 0 && pendingExpenseTotal > safeToSpend.remainingToday;
+
+  function handleSaveClick(splitMode) {
+    if (willExceedSafe) {
+      const confirmed = window.confirm(
+        `Cảnh báo Safe-to-Spend: Tổng khoản chi (${fmtVND(pendingExpenseTotal)}) vượt quá hạn mức cho phép hôm nay (còn lại: ${safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}). Bạn còn ${safeToSpend.daysRemaining} ngày nữa đến kỳ nhận tiền (${safeToSpend.nextPaydayStr}). Bạn có chắc muốn lưu không?`
+      );
+      if (!confirmed) return;
+    }
+    onSave(splitMode);
+  }
+
+  return (
+    <div>
+      {/* Summary */}
+      <div style={{ background: T.teal + "15", border: `1px solid ${T.teal}44`, borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <Sparkles size={14} color={T.teal} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: T.teal }}>Kết quả AI</span>
+          <span style={{ fontSize: 10, color: confidenceColor, marginLeft: "auto", fontWeight: 600 }}>● {confidenceLabel}</span>
+        </div>
+        {rawSummary && <div style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.4 }}>{rawSummary}</div>}
+      </div>
+
+      {/* Editable transaction list */}
+      <div style={{ fontSize: 12, fontWeight: 600, color: T.tealDark, marginBottom: 8 }}>Giao dịch phát hiện được ({editableTxs.length})</div>
+      {editableTxs.map((t, idx) => {
+        const meta = catMeta(t.category);
+        return (
+          <div key={t._id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <IconBadge Icon={meta.Icon} color={meta.color} size={28} />
+              <div style={{ flex: 1 }}>
+                <input
+                  value={t.note}
+                  onChange={(e) => updateTx(idx, "note", e.target.value)}
+                  style={{ width: "100%", fontSize: 12, fontWeight: 600, background: "transparent", border: "none", outline: "none", color: T.ink, padding: 0 }}
+                />
+                <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
+                  <select
+                    value={t.type}
+                    onChange={(e) => updateTx(idx, "type", e.target.value)}
+                    style={{ fontSize: 10, border: "none", background: "transparent", color: T.inkSoft, cursor: "pointer" }}
+                  >
+                    <option value="expense">Chi tiêu</option>
+                    <option value="income">Thu nhập</option>
+                  </select>
+                  <select
+                    value={t.category}
+                    onChange={(e) => updateTx(idx, "category", e.target.value)}
+                    style={{ fontSize: 10, border: "none", background: "transparent", color: T.inkSoft, cursor: "pointer" }}
+                  >
+                    {ALL_CATS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <input
+                  type="number"
+                  value={t.amount}
+                  onChange={(e) => updateTx(idx, "amount", Math.max(0, Number(e.target.value)))}
+                  style={{ width: 90, fontSize: 13, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, textAlign: "right", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 6px", background: T.paper }}
+                />
+                <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>đ</div>
+              </div>
+              <button onClick={() => removeTx(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 2 }}>
+                <X size={13} />
+              </button>
+            </div>
+            <input
+              type="date" value={t.date}
+              onChange={(e) => updateTx(idx, "date", e.target.value)}
+              style={{ fontSize: 11, border: "none", background: "transparent", color: T.inkSoft, cursor: "pointer" }}
+            />
+          </div>
+        );
+      })}
+
+      {/* Group split section */}
+      {showSplit && (
+        <div style={{ background: "#FFF6E0", border: `1px solid ${T.gold}66`, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+            <Users size={14} color={T.goldDark} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.goldDark }}>Gợi ý chia tiền nhóm</span>
+          </div>
+          <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 8 }}>{groupExpense.reason}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: T.ink }}>Số người:</span>
+            <input
+              type="number" min={1} max={20} value={splitPeople}
+              onChange={(e) => setSplitPeople(Math.max(1, Number(e.target.value)))}
+              style={{ width: 56, padding: "4px 8px", borderRadius: 6, border: `1px solid ${T.border}`, fontSize: 13, textAlign: "center" }}
+            />
+            <span style={{ fontSize: 12, color: T.inkSoft, flex: 1 }}>
+              → Mỗi người: <strong style={{ color: T.tealDark }}>{fmtVND(Math.round(editableTxs.reduce((s, t) => s + t.amount, 0) / splitPeople))}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Cảnh báo vượt hạn mức Safe-to-Spend */}
+      {willExceedSafe && (
+        <div style={{
+          background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 10,
+          padding: "10px 12px", marginBottom: 12, display: "flex", gap: 8, alignItems: "flex-start"
+        }}>
+          <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
+          <div style={{ fontSize: 11.5, color: "#7B2317", lineHeight: 1.45 }}>
+            <strong>Cảnh báo vượt hạn mức Safe-to-Spend!</strong><br />
+            Tổng chi tiêu sắp lưu (<strong>{fmtVND(pendingExpenseTotal)}</strong>) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: <strong>{safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}</strong>). Còn <strong>{safeToSpend.daysRemaining} ngày</strong> nữa mới đến kỳ nhận tiền ({safeToSpend.nextPaydayStr}).
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
         <button
-          onClick={onSubmit}
-          style={{ width: "100%", background: T.gold, border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 14, color: "#3A2A08", cursor: "pointer" }}
+          onClick={onBack}
+          style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, fontSize: 13, cursor: "pointer", color: T.inkSoft }}
         >
-          Lưu giao dịch
+          ← Sửa lại
+        </button>
+        {showSplit && (
+          <button
+            onClick={() => handleSaveClick(true)}
+            disabled={saving || editableTxs.length === 0}
+            style={{
+              flex: 1.5, padding: "10px 0", borderRadius: 10, border: "none",
+              background: saving ? T.border : T.gold, fontSize: 12, fontWeight: 700,
+              cursor: saving || editableTxs.length === 0 ? "default" : "pointer", color: "#3A2A08",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+            }}
+          >
+            {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Users size={14} />}
+            Lưu (phần tôi)
+          </button>
+        )}
+        <button
+          onClick={() => handleSaveClick(false)}
+          disabled={saving || editableTxs.length === 0}
+          style={{
+            flex: 2, padding: "10px 0", borderRadius: 10, border: "none",
+            background: saving || editableTxs.length === 0 ? T.border : T.teal,
+            fontSize: 13, fontWeight: 700,
+            cursor: saving || editableTxs.length === 0 ? "default" : "pointer", color: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+          }}
+        >
+          {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <CheckCircle2 size={14} />}
+          {showSplit ? "Lưu toàn bộ" : "Lưu giao dịch"}
         </button>
       </div>
     </div>
   );
 }
+
+// ── Safe-to-Spend Form component (used in Budget tab) ─────────────────────────
+function SafeToSpendForm({ userSettings, onUpdateSettings }) {
+  const [payday, setPayday] = useState(userSettings?.payday_day || 1);
+  const [reserve, setReserve] = useState(userSettings?.emergency_reserve || 0);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setPayday(userSettings?.payday_day || 1);
+    setReserve(userSettings?.emergency_reserve || 0);
+  }, [userSettings]);
+
+  function handleSave() {
+    onUpdateSettings({ payday_day: payday, emergency_reserve: reserve });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 6 }}>Thiết lập kỳ trợ cấp & quỹ dự phòng:</div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: 4 }}>Ngày nhận tiền định kỳ:</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 11.5, color: T.inkSoft }}>Ngày</span>
+            <input
+              type="number" min={1} max={31} value={payday}
+              onChange={(e) => setPayday(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+              style={{ width: 50, padding: "5px 6px", borderRadius: 6, border: `1px solid ${T.border}`, fontSize: 12.5, textAlign: "center", background: T.paper }}
+            />
+            <span style={{ fontSize: 11.5, color: T.inkSoft }}>hàng tháng</span>
+          </div>
+        </div>
+        <div style={{ flex: 1.5 }}>
+          <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: 4 }}>Quỹ dự phòng khẩn cấp:</div>
+          <input
+            type="number" step={50000} min={0} value={reserve}
+            onChange={(e) => setReserve(Math.max(0, parseFloat(e.target.value) || 0))}
+            placeholder="Số tiền giữ lại (VND)"
+            style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.paper }}
+          />
+        </div>
+      </div>
+      <button
+        onClick={handleSave}
+        style={{
+          width: "100%", background: saved ? "#388E3C" : T.teal, border: "none", borderRadius: 8,
+          padding: "8px 0", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 5, transition: "background .2s"
+        }}
+      >
+        <CheckCircle2 size={15} /> {saved ? "Đã lưu cài đặt Safe-to-Spend!" : "Lưu cài đặt Safe-to-Spend"}
+      </button>
+    </div>
+  );
+}
+
+// ── Safe-to-Spend Quick Settings Modal (opened from HomeTab) ──────────────────
+function SafeToSpendSettingsModal({ userSettings, onClose, onSave }) {
+  const [payday, setPayday] = useState(userSettings?.payday_day || 1);
+  const [reserve, setReserve] = useState(userSettings?.emergency_reserve || 0);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "#20302Cb0", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 360, background: T.paper, borderRadius: 16, border: `1px solid ${T.border}`, padding: "20px 18px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <ShieldCheck size={18} color={T.teal} />
+            <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark }}>
+              Cài đặt Safe-to-Spend
+            </span>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 2 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 14, lineHeight: 1.4 }}>
+          Cấu hình ngày nhận trợ cấp/lương và quỹ khẩn cấp để Tuấn tính toán hạn mức tiêu tối đa mỗi ngày cho bạn.
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+            Ngày nhận trợ cấp / lương định kỳ:
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: T.inkSoft }}>Ngày</span>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              value={payday}
+              onChange={(e) => setPayday(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
+              style={{ width: 60, padding: "6px 8px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, textAlign: "center", background: T.card }}
+            />
+            <span style={{ fontSize: 12, color: T.inkSoft }}>hàng tháng</span>
+          </div>
+          <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 3 }}>
+            (Ví dụ: Ngày 1 nhận tiền gia đình gửi, hoặc ngày 15 nhận lương)
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+            Quỹ dự phòng khẩn cấp giữ lại:
+          </label>
+          <input
+            type="number"
+            step={50000}
+            min={0}
+            value={reserve}
+            onChange={(e) => setReserve(Math.max(0, parseFloat(e.target.value) || 0))}
+            placeholder="Số tiền giữ lại (VND)"
+            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, background: T.card }}
+          />
+          <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 3 }}>
+            (Khoản tiền này sẽ không chia vào hạn mức tiêu để phòng sự cố đột xuất)
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: "9px 0", borderRadius: 8, border: `1px solid ${T.border}`, background: T.card, fontSize: 12.5, cursor: "pointer", color: T.inkSoft }}
+          >
+            Hủy
+          </button>
+          <button
+            onClick={() => onSave({ payday_day: payday, emergency_reserve: reserve })}
+            style={{ flex: 1.5, padding: "9px 0", borderRadius: 8, border: "none", background: T.teal, fontSize: 12.5, fontWeight: 600, color: "#fff", cursor: "pointer" }}
+          >
+            Lưu cài đặt
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

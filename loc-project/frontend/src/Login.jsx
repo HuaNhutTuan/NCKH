@@ -56,7 +56,7 @@ export default function Login() {
           {mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
         </div>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, marginBottom: 20 }}>
-          Lộc — Ví sinh viên
+          Tuấn — Ví sinh viên
         </div>
 
         {mode === "register" && (
@@ -83,6 +83,7 @@ export default function Login() {
 
         <button
           type="submit" disabled={loading}
+          className="btn-gold"
           style={{
             width: "100%", marginTop: 14, background: T.gold, border: "none", borderRadius: 10,
             padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#3A2A08",
@@ -95,6 +96,7 @@ export default function Login() {
         <div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: T.inkSoft }}>
           {mode === "login" ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
           <span
+            className="btn-link"
             onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
             style={{ color: T.teal, fontWeight: 600, cursor: "pointer" }}
           >

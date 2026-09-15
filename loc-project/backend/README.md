@@ -39,12 +39,13 @@ Server chạy tại `http://localhost:4000`. Kiểm tra nhanh: mở `http://loca
 | DELETE | `/api/transactions/:id` | Xoá một giao dịch                        | Có |
 | GET    | `/api/budgets`        | `{category: limit, ...}`                   | Có |
 | PUT    | `/api/budgets`        | `{category, limit}` → tạo/cập nhật hạn mức | Có |
+| POST   | `/api/chat`           | `{messages, systemPrompt}` → AI trả lời     | Có |
 
 Mọi route "Có" yêu cầu header: `Authorization: Bearer <token>` (token nhận được từ lúc đăng ký/đăng nhập).
 
 ## 5. Bảo mật đã áp dụng
 
-- Mật khẩu **không bao giờ** lưu dạng thô — chỉ lưu bản băm bằng `bcrypt`.
+- Mật khẩu **không bao giờ** lưu dạng thô — được băm bằng thuật toán `SHA-256` trước khi lưu vào cơ sở dữ liệu MySQL.
 - Đăng nhập/đăng ký trả về **JWT** hết hạn sau 7 ngày; mỗi request tới dữ liệu riêng tư đều được xác thực qua middleware `requireAuth`.
 - Mỗi giao dịch/ngân sách gắn với `user_id`; các câu truy vấn luôn lọc theo `user_id` của người đang đăng nhập, nên một tài khoản không thể đọc hay xoá dữ liệu của tài khoản khác.
 - CORS chỉ cho phép domain frontend bạn khai báo trong `CLIENT_ORIGIN`.

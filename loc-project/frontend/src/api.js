@@ -37,3 +37,35 @@ export const budgetsApi = {
   update: (token, category, limit) =>
     request("/budgets", { method: "PUT", token, body: { category, limit } }),
 };
+
+export const chatApi = {
+  send: (token, { messages, systemPrompt }) =>
+    request("/chat", { method: "POST", token, body: { messages, systemPrompt } }),
+};
+
+export const multimodalApi = {
+  // Phân tích câu lệnh văn bản tự nhiên / voice transcript
+  parseText: (token, text) =>
+    request("/multimodal/text", { method: "POST", token, body: { text } }),
+
+  // Phân tích hình ảnh hóa đơn / ảnh chuyển khoản (dùng FormData)
+  parseImage: async (token, file) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch(`${API_BASE}/multimodal/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Có lỗi xảy ra khi phân tích hình ảnh.");
+    return data;
+  },
+};
+
+export const settingsApi = {
+  get: (token) => request("/settings", { token }),
+  update: (token, settings) =>
+    request("/settings", { method: "PUT", token, body: settings }),
+};
+

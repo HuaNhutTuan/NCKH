@@ -1,8 +1,13 @@
 const express = require("express");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const { requireAuth } = require("../middleware/auth");
+
+function hashPasswordSHA256(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
 
 const router = express.Router();
 
@@ -34,7 +39,7 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "Email này đã được đăng ký." });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = hashPasswordSHA256(password);
     const [result] = await pool.query(
       "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
       [name, email, passwordHash]
@@ -68,7 +73,18 @@ router.post("/login", async (req, res) => {
     }
 
     const user = rows[0];
-    const match = await bcrypt.compare(password, user.password_hash);
+    let match = false;
+    if (user.password_hash.startsWith("$2a$") || user.password_hash.startsWith("$2b$")) {
+      match = await bcrypt.compare(password, user.password_hash);
+      if (match) {
+        // Tự động nâng cấp tài khoản cũ sang SHA-256
+        const newHash = hashPasswordSHA256(password);
+        await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, user.id]);
+      }
+    } else {
+      match = hashPasswordSHA256(password) === user.password_hash;
+    }
+
     if (!match) {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng." });
     }

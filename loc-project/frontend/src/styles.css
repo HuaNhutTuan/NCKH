@@ -1,0 +1,321 @@
+/* =========================================================
+   Interactive Button Effects: Hover & Click Glow (Phát sáng)
+   ========================================================= */
+
+/* Global button base transitions */
+button {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              filter 0.2s ease,
+              background-color 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease;
+  outline: none;
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Light burst aura for filled buttons on click */
+.btn-gold::after,
+.btn-teal::after,
+.btn-teal-sm::after,
+.btn-logout::after,
+.send-btn::after,
+.btn-type-toggle::after,
+.btn-cat::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.btn-gold:active::after,
+.btn-teal:active::after,
+.btn-teal-sm:active::after,
+.btn-logout:active::after,
+.send-btn:active::after,
+.btn-type-toggle:active::after,
+.btn-cat:active::after {
+  opacity: 1;
+  transition: opacity 0.04s ease;
+}
+
+/* 1. Primary Gold Button (.btn-gold) */
+.btn-gold {
+  cursor: pointer;
+}
+.btn-gold:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 18px rgba(217, 164, 65, 0.45), 0 0 12px rgba(217, 164, 65, 0.3) !important;
+}
+.btn-gold:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.98);
+  filter: brightness(1.32) contrast(1.08) !important;
+  box-shadow: 0 0 24px rgba(217, 164, 65, 0.95), 
+              0 0 45px rgba(255, 215, 0, 0.75), 
+              inset 0 0 14px rgba(255, 255, 255, 0.65) !important;
+}
+
+/* 2. Primary Teal Button (.btn-teal) */
+.btn-teal {
+  cursor: pointer;
+}
+.btn-teal:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  filter: brightness(1.12);
+  box-shadow: 0 5px 16px rgba(31, 111, 99, 0.42), 0 0 10px rgba(31, 111, 99, 0.25) !important;
+}
+.btn-teal:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.97);
+  filter: brightness(1.35) contrast(1.05) !important;
+  box-shadow: 0 0 22px rgba(31, 111, 99, 0.9), 
+              0 0 40px rgba(78, 205, 186, 0.75), 
+              inset 0 0 12px rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Small teal button (.btn-teal-sm) */
+.btn-teal-sm {
+  cursor: pointer;
+}
+.btn-teal-sm:hover {
+  transform: translateY(-1px) scale(1.06);
+  filter: brightness(1.14);
+  box-shadow: 0 3px 12px rgba(31, 111, 99, 0.45) !important;
+}
+.btn-teal-sm:active {
+  transform: scale(0.95);
+  filter: brightness(1.35) !important;
+  box-shadow: 0 0 20px rgba(31, 111, 99, 0.95), 0 0 32px rgba(78, 205, 186, 0.75) !important;
+}
+
+/* 3. Logout Circular Button (.btn-logout) */
+.btn-logout {
+  cursor: pointer;
+}
+.btn-logout:hover {
+  transform: scale(1.1) rotate(-8deg);
+  filter: brightness(1.12);
+  box-shadow: 0 5px 16px rgba(217, 164, 65, 0.5), 0 0 12px rgba(217, 164, 65, 0.35) !important;
+}
+.btn-logout:active {
+  transform: scale(0.95) rotate(0deg);
+  filter: brightness(1.38) !important;
+  box-shadow: 0 0 26px rgba(217, 164, 65, 0.95), 0 0 42px rgba(255, 215, 0, 0.85) !important;
+}
+
+/* 4. Bottom Nav Tabs (.tab-btn) */
+.tab-btn {
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              color 0.2s ease,
+              background-color 0.2s ease,
+              box-shadow 0.2s ease,
+              filter 0.2s ease !important;
+}
+.tab-btn:hover {
+  transform: translateY(-2px);
+  color: #1F6F63 !important;
+  background: rgba(31, 111, 99, 0.09) !important;
+  box-shadow: 0 3px 10px rgba(31, 111, 99, 0.15) !important;
+}
+.tab-btn:active {
+  transform: scale(0.92);
+  color: #1F6F63 !important;
+  background: rgba(31, 111, 99, 0.2) !important;
+  box-shadow: 0 0 18px rgba(31, 111, 99, 0.6), inset 0 0 8px rgba(31, 111, 99, 0.25) !important;
+  filter: brightness(1.3) drop-shadow(0 0 6px rgba(31, 111, 99, 0.7)) !important;
+}
+.tab-btn.active {
+  background: rgba(31, 111, 99, 0.08) !important;
+  box-shadow: 0 0 10px rgba(31, 111, 99, 0.16) !important;
+}
+
+/* 5. Delete Transaction Button (.btn-delete) */
+.btn-delete {
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease,
+              color 0.2s ease,
+              background 0.2s ease,
+              filter 0.2s ease,
+              box-shadow 0.2s ease !important;
+}
+.btn-delete:hover {
+  color: #AE4C3B !important;
+  transform: scale(1.22);
+  background: rgba(174, 76, 59, 0.12) !important;
+  box-shadow: 0 2px 8px rgba(174, 76, 59, 0.22) !important;
+}
+.btn-delete:active {
+  transform: scale(0.92);
+  color: #E63946 !important;
+  background: rgba(174, 76, 59, 0.28) !important;
+  box-shadow: 0 0 18px rgba(230, 57, 70, 0.85), inset 0 0 6px rgba(255, 255, 255, 0.5) !important;
+  filter: brightness(1.35) drop-shadow(0 0 8px rgba(230, 57, 70, 0.8)) !important;
+}
+
+/* 6. Budget Edit Button (.btn-edit) */
+.btn-edit {
+  cursor: pointer;
+  transition: transform 0.2s ease,
+              color 0.2s ease,
+              border-color 0.2s ease,
+              background 0.2s ease,
+              box-shadow 0.2s ease,
+              filter 0.2s ease !important;
+}
+.btn-edit:hover {
+  transform: translateY(-1.5px);
+  color: #1F6F63 !important;
+  border-color: #1F6F63 !important;
+  background: rgba(31, 111, 99, 0.09) !important;
+  box-shadow: 0 2px 8px rgba(31, 111, 99, 0.22) !important;
+}
+.btn-edit:active {
+  transform: scale(0.94);
+  color: #1F6F63 !important;
+  border-color: #1F6F63 !important;
+  background: rgba(31, 111, 99, 0.22) !important;
+  box-shadow: 0 0 16px rgba(31, 111, 99, 0.55), inset 0 0 6px rgba(31, 111, 99, 0.2) !important;
+  filter: brightness(1.28) !important;
+}
+
+/* 7. Suggested Prompts Chip Button (.chip-btn) */
+.chip-btn {
+  cursor: pointer;
+  transition: transform 0.2s ease,
+              border-color 0.2s ease,
+              background 0.2s ease,
+              box-shadow 0.2s ease,
+              filter 0.2s ease !important;
+}
+.chip-btn:hover {
+  transform: translateX(4px);
+  background: rgba(31, 111, 99, 0.08) !important;
+  border-color: #1F6F63 !important;
+  box-shadow: 0 4px 14px rgba(31, 111, 99, 0.16) !important;
+}
+.chip-btn:hover .chip-arrow {
+  color: #1F6F63 !important;
+  transform: translateX(3px);
+}
+.chip-btn .chip-arrow {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.chip-btn:active {
+  transform: translateX(2px) scale(0.98);
+  background: rgba(31, 111, 99, 0.18) !important;
+  border-color: #1F6F63 !important;
+  box-shadow: 0 0 18px rgba(31, 111, 99, 0.45), inset 0 0 8px rgba(31, 111, 99, 0.2) !important;
+  filter: brightness(1.22) !important;
+}
+
+/* 8. Chat Send Button (.send-btn) */
+.send-btn {
+  cursor: pointer;
+}
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.12);
+  filter: brightness(1.16);
+  box-shadow: 0 4px 16px rgba(31, 111, 99, 0.5), 0 0 12px rgba(31, 111, 99, 0.32) !important;
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.94);
+  filter: brightness(1.4) !important;
+  box-shadow: 0 0 26px rgba(31, 111, 99, 0.95), 0 0 45px rgba(78, 205, 186, 0.85) !important;
+}
+
+/* 9. Modal Close Button (.btn-close) */
+.btn-close {
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease,
+              color 0.2s ease,
+              background 0.2s ease,
+              filter 0.2s ease,
+              box-shadow 0.2s ease !important;
+}
+.btn-close:hover {
+  transform: rotate(90deg) scale(1.15);
+  color: #AE4C3B !important;
+  background: rgba(174, 76, 59, 0.12) !important;
+  box-shadow: 0 0 10px rgba(174, 76, 59, 0.2) !important;
+}
+.btn-close:active {
+  transform: rotate(90deg) scale(0.95);
+  filter: brightness(1.35) drop-shadow(0 0 8px rgba(174, 76, 59, 0.8)) !important;
+  box-shadow: 0 0 16px rgba(174, 76, 59, 0.5) !important;
+}
+
+/* 10. Type Toggle Buttons (.btn-type-toggle) */
+.btn-type-toggle {
+  cursor: pointer;
+}
+.btn-type-toggle:hover {
+  transform: translateY(-1.5px);
+  filter: brightness(1.08);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08) !important;
+}
+.btn-type-toggle:active {
+  transform: translateY(0.5px) scale(0.97);
+  filter: brightness(1.32) !important;
+  box-shadow: 0 0 20px rgba(31, 111, 99, 0.8), 0 0 32px rgba(78, 205, 186, 0.55) !important;
+}
+.btn-type-toggle.active {
+  box-shadow: 0 2px 10px rgba(31, 111, 99, 0.35) !important;
+}
+
+/* 11. Modal Category Buttons (.btn-cat) */
+.btn-cat {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s ease,
+              filter 0.2s ease,
+              border-color 0.2s ease,
+              background-color 0.2s ease !important;
+}
+.btn-cat:hover {
+  transform: translateY(-2.5px) scale(1.04);
+  filter: brightness(1.08);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.1) !important;
+}
+.btn-cat:active {
+  transform: translateY(0.5px) scale(0.94);
+  filter: brightness(1.32) !important;
+  box-shadow: 0 0 22px var(--cat-color, rgba(31, 111, 99, 0.8)), 
+              0 0 38px var(--cat-color, rgba(31, 111, 99, 0.55)),
+              inset 0 0 10px rgba(255, 255, 255, 0.65) !important;
+}
+.btn-cat.active {
+  box-shadow: 0 0 12px var(--cat-color, rgba(31, 111, 99, 0.45)), inset 0 0 6px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* 12. Text/Link Buttons (.btn-link) */
+.btn-link {
+  transition: filter 0.2s ease, text-shadow 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  cursor: pointer;
+}
+.btn-link:hover {
+  transform: scale(1.05);
+  filter: brightness(1.22);
+  text-shadow: 0 0 8px rgba(31, 111, 99, 0.45);
+}
+.btn-link:active {
+  transform: scale(0.96);
+  filter: brightness(1.42) !important;
+  text-shadow: 0 0 16px rgba(31, 111, 99, 0.85) !important;
+}

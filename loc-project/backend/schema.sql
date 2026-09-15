@@ -38,3 +38,12 @@ CREATE TABLE IF NOT EXISTS budgets (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_user_category (user_id, category)
 ) ENGINE=InnoDB;
+
+-- Cài đặt hạn mức chi tiêu hàng ngày (Safe-to-Spend) cho sinh viên
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id           INT PRIMARY KEY,
+  payday_day        INT DEFAULT 1,
+  emergency_reserve DECIMAL(14,2) DEFAULT 0,
+  updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
