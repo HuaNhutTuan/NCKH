@@ -1,5 +1,5 @@
-// Đổi URL này thành địa chỉ backend thật khi triển khai (vd: https://api.locapp.vn)
-export const API_BASE = "http://localhost:4000/api";
+// Đổi URL này thành địa chỉ backend thật khi triển khai (vd: https://api.locapp.vn hoặc để trống /api khi chạy cùng host)
+export const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
 async function request(path, { method = "GET", token, body } = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
