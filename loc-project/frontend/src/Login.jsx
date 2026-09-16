@@ -24,7 +24,10 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    if (!form.email || !form.password || (mode === "register" && !form.name)) {
+    const cleanEmail = form.email.trim().toLowerCase();
+    const cleanName = form.name.trim();
+
+    if (!cleanEmail || !form.password || (mode === "register" && !cleanName)) {
       setError("Vui lòng điền đầy đủ thông tin.");
       return;
     }
@@ -32,62 +35,174 @@ export default function Login() {
     setLoading(true);
     try {
       if (mode === "login") {
-        await login(form.email, form.password);
+        await login(cleanEmail, form.password);
       } else {
-        await register(form.name, form.email, form.password);
+        await register(cleanName, cleanEmail, form.password);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Đã xảy ra lỗi.");
     } finally {
       setLoading(false);
     }
   }
 
+  const isDuplicateEmailError = error && (
+    error.includes("đã được đăng ký") ||
+    error.toLowerCase().includes("trùng") ||
+    error.toLowerCase().includes("already")
+  );
+
   return (
     <div style={{
-      minHeight: 640, display: "flex", alignItems: "center", justifyContent: "center",
-      background: T.paper, fontFamily: "'Inter',sans-serif", padding: 20,
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Inter',sans-serif",
+      boxSizing: "border-box",
     }}>
       <form onSubmit={handleSubmit} style={{
-        width: 340, background: T.card, border: `1px solid ${T.border}`, borderRadius: 16,
-        padding: "28px 24px",
+        width: "100%",
+        maxWidth: 380,
+        background: T.card,
+        border: `1px solid ${T.border}`,
+        borderRadius: 16,
+        padding: "26px 22px",
+        boxSizing: "border-box",
+        boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
+        display: "flex",
+        flexDirection: "column",
       }}>
-        <div style={{ fontSize: 12, color: T.inkSoft, fontWeight: 500, marginBottom: 2 }}>
+        {/* Thanh chuyển đổi chế độ Đăng nhập / Đăng ký */}
+        <div style={{
+          display: "flex",
+          background: T.paper,
+          borderRadius: 10,
+          padding: 3,
+          marginBottom: 18,
+          border: `1px solid ${T.border}`,
+          boxSizing: "border-box",
+        }}>
+          <button
+            type="button"
+            onClick={() => { setMode("login"); setError(""); }}
+            style={{
+              flex: 1,
+              padding: "7px 0",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: mode === "login" ? 700 : 500,
+              background: mode === "login" ? "#fff" : "transparent",
+              color: mode === "login" ? T.tealDark : T.inkSoft,
+              boxShadow: mode === "login" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+              cursor: "pointer",
+              boxSizing: "border-box",
+            }}
+          >
+            Đăng nhập
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("register"); setError(""); }}
+            style={{
+              flex: 1,
+              padding: "7px 0",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: mode === "register" ? 700 : 500,
+              background: mode === "register" ? "#fff" : "transparent",
+              color: mode === "register" ? T.tealDark : T.inkSoft,
+              boxShadow: mode === "register" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
+              cursor: "pointer",
+              boxSizing: "border-box",
+            }}
+          >
+            Đăng ký
+          </button>
+        </div>
+
+        <div style={{ fontSize: 12, color: T.inkSoft, fontWeight: 500, marginBottom: 3 }}>
           {mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, marginBottom: 20 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, marginBottom: 18 }}>
           Tuấn — Ví sinh viên
         </div>
 
         {mode === "register" && (
           <input
-            type="text" placeholder="Họ và tên" value={form.name}
+            type="text"
+            placeholder="Họ và tên"
+            value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             style={inputStyle}
           />
         )}
         <input
-          type="email" placeholder="Email" value={form.email}
+          type="email"
+          placeholder="Email"
+          value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
           style={inputStyle}
         />
         <input
-          type="password" placeholder="Mật khẩu (ít nhất 6 ký tự)" value={form.password}
+          type="password"
+          placeholder="Mật khẩu (ít nhất 6 ký tự)"
+          value={form.password}
           onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-          style={{ ...inputStyle, marginBottom: 6 }}
+          style={{ ...inputStyle, marginBottom: error ? 8 : 4 }}
         />
 
         {error && (
-          <div style={{ fontSize: 12.5, color: T.brick, margin: "6px 0 4px" }}>{error}</div>
+          <div style={{
+            fontSize: 12.5,
+            color: T.brick,
+            background: "#AE4C3B14",
+            border: "1px solid #AE4C3B33",
+            borderRadius: 8,
+            padding: "8px 12px",
+            margin: "4px 0 10px",
+            lineHeight: 1.45,
+            boxSizing: "border-box",
+          }}>
+            <div>{error}</div>
+            {mode === "register" && isDuplicateEmailError && (
+              <div style={{ marginTop: 6 }}>
+                <span
+                  onClick={() => { setMode("login"); setError(""); }}
+                  style={{
+                    color: T.teal,
+                    fontWeight: 700,
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    display: "inline-block",
+                  }}
+                >
+                  👉 Chuyển sang Đăng nhập với email này
+                </span>
+              </div>
+            )}
+          </div>
         )}
 
         <button
-          type="submit" disabled={loading}
+          type="submit"
+          disabled={loading}
           className="btn-gold"
           style={{
-            width: "100%", marginTop: 14, background: T.gold, border: "none", borderRadius: 10,
-            padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#3A2A08",
-            cursor: loading ? "default" : "pointer", opacity: loading ? 0.7 : 1,
+            width: "100%",
+            marginTop: 12,
+            background: T.gold,
+            border: "none",
+            borderRadius: 10,
+            padding: "11px 0",
+            fontWeight: 700,
+            fontSize: 14,
+            color: "#3A2A08",
+            cursor: loading ? "default" : "pointer",
+            opacity: loading ? 0.7 : 1,
+            boxSizing: "border-box",
           }}
         >
           {loading ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Đăng ký"}
@@ -109,6 +224,15 @@ export default function Login() {
 }
 
 const inputStyle = {
-  width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`,
-  fontSize: 13.5, marginBottom: 10, background: T.paper, color: T.ink, outline: "none",
+  width: "100%",
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: `1px solid ${T.border}`,
+  fontSize: 14,
+  marginBottom: 10,
+  background: T.paper,
+  color: T.ink,
+  outline: "none",
+  boxSizing: "border-box",
+  display: "block",
 };

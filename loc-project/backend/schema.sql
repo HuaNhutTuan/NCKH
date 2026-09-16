@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          VARCHAR(100)  NOT NULL,
   email         VARCHAR(190)  NOT NULL UNIQUE,
   password_hash VARCHAR(255)  NOT NULL,
+  role          VARCHAR(20)   DEFAULT 'user',
   created_at    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -46,4 +47,18 @@ CREATE TABLE IF NOT EXISTS user_settings (
   emergency_reserve DECIMAL(14,2) DEFAULT 0,
   updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Cơ sở tri thức AI (Knowledge Base & FAQ cho Chatbot)
+CREATE TABLE IF NOT EXISTS knowledge_base (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  type        ENUM('faq', 'document', 'text') NOT NULL,
+  title       VARCHAR(255) NOT NULL,
+  content     MEDIUMTEXT NOT NULL,
+  file_name   VARCHAR(255) DEFAULT NULL,
+  is_active   TINYINT(1) DEFAULT 1,
+  created_by  INT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_active (is_active)
 ) ENGINE=InnoDB;

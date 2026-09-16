@@ -8,6 +8,7 @@ const budgetRoutes = require("./routes/budgets");
 const chatRoutes = require("./routes/chat");
 const multimodalRoutes = require("./routes/multimodal");
 const settingsRoutes = require("./routes/settings");
+const knowledgeRoutes = require("./routes/knowledge");
 
 const path = require("path");
 const fs = require("fs");
@@ -27,6 +28,7 @@ app.use("/api/budgets", budgetRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/multimodal", multimodalRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/knowledge", knowledgeRoutes);
 
 // Phục vụ các file tĩnh của Frontend (từ public hoặc ../frontend/dist)
 const publicPath = path.join(__dirname, "public");

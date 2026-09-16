@@ -23,7 +23,17 @@ function Root() {
 export default function App() {
   return (
     <AuthProvider>
-      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#E8E4D6", padding: 16 }}>
+      <div style={{
+        minHeight: "100vh",
+        width: "100%",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#E8E4D6",
+        padding: "16px 12px",
+        boxSizing: "border-box",
+        overflowX: "hidden",
+      }}>
         <Root />
       </div>
     </AuthProvider>

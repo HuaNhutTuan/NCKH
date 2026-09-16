@@ -12,7 +12,7 @@ import {
   ShieldCheck, ShieldAlert, Settings, Calendar, Info,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi } from "./api";
+import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -468,6 +468,8 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
               chatLoading={chatLoading}
               sendChat={sendChat}
               chatEndRef={chatEndRef}
+              user={user}
+              token={token}
             />
           )}
         </div>
@@ -1499,14 +1501,488 @@ function LearnTab({ onAsk }) {
   );
 }
 
+// ---------------- Knowledge Base Modal (Quản lý Tri thức AI dành cho Admin) ----------------
+function KnowledgeBaseModal({ token, onClose, onRefresh }) {
+  const [activeTab, setActiveTab] = useState("list"); // "list" | "add_faq" | "add_doc"
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  // Form thêm FAQ
+  const [faqTitle, setFaqTitle] = useState("");
+  const [faqQuestion, setFaqQuestion] = useState("");
+  const [faqAnswer, setFaqAnswer] = useState("");
+
+  // Form thêm tài liệu / upload
+  const [docTitle, setDocTitle] = useState("");
+  const [docContent, setDocContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const loadData = useCallback(() => {
+    setLoading(true);
+    knowledgeApi.list(token)
+      .then((data) => {
+        setItems(data.knowledge || []);
+        if (onRefresh) onRefresh(data.knowledge?.length || 0);
+      })
+      .catch((err) => console.error("Lỗi tải tri thức:", err))
+      .finally(() => setLoading(false));
+  }, [token, onRefresh]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function handleAddFaq(e) {
+    e.preventDefault();
+    if (!faqTitle.trim() || !faqAnswer.trim()) {
+      alert("Vui lòng điền tiêu đề và nội dung trả lời.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const fullContent = `Câu hỏi: ${faqQuestion.trim() || faqTitle.trim()}\nTrả lời: ${faqAnswer.trim()}`;
+      await knowledgeApi.create(token, {
+        type: "faq",
+        title: faqTitle.trim(),
+        content: fullContent,
+      });
+      setNotice("Đã thêm câu hỏi FAQ thành công!");
+      setFaqTitle("");
+      setFaqQuestion("");
+      setFaqAnswer("");
+      loadData();
+      setTimeout(() => { setNotice(""); setActiveTab("list"); }, 1200);
+    } catch (err) {
+      alert(err.message || "Không thể thêm FAQ.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAddDocument(e) {
+    e.preventDefault();
+    if (selectedFile) {
+      setSubmitting(true);
+      try {
+        await knowledgeApi.upload(token, selectedFile, docTitle.trim() || selectedFile.name);
+        setNotice("Đã tải lên và nạp tài liệu thành công!");
+        setSelectedFile(null);
+        setDocTitle("");
+        loadData();
+        setTimeout(() => { setNotice(""); setActiveTab("list"); }, 1200);
+      } catch (err) {
+        alert(err.message || "Lỗi khi tải file lên.");
+      } finally {
+        setSubmitting(false);
+      }
+    } else {
+      if (!docTitle.trim() || !docContent.trim()) {
+        alert("Vui lòng nhập tiêu đề và nội dung văn bản.");
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await knowledgeApi.create(token, {
+          type: "document",
+          title: docTitle.trim(),
+          content: docContent.trim(),
+        });
+        setNotice("Đã lưu tài liệu thành công!");
+        setDocTitle("");
+        setDocContent("");
+        loadData();
+        setTimeout(() => { setNotice(""); setActiveTab("list"); }, 1200);
+      } catch (err) {
+        alert(err.message || "Lỗi khi lưu tài liệu.");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  }
+
+  async function handleToggle(id) {
+    try {
+      const res = await knowledgeApi.toggle(token, id);
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, is_active: res.is_active } : item))
+      );
+    } catch (err) {
+      alert("Không thể đổi trạng thái: " + err.message);
+    }
+  }
+
+  async function handleDelete(id, title) {
+    if (!window.confirm(`Bạn có chắc muốn xóa tài liệu "${title}" khỏi kho tri thức?`)) return;
+    try {
+      await knowledgeApi.remove(token, id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      if (onRefresh) onRefresh(items.length - 1);
+    } catch (err) {
+      alert("Không thể xóa: " + err.message);
+    }
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(32,48,44,0.65)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 100, padding: 16, boxSizing: "border-box",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: 410, maxHeight: "88vh",
+        background: T.card, borderRadius: 16, border: `1px solid ${T.border}`,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column",
+        overflow: "hidden", boxSizing: "border-box",
+      }}>
+        {/* Header modal */}
+        <div style={{
+          padding: "16px 18px", borderBottom: `1px solid ${T.border}`,
+          display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper,
+        }}>
+          <div>
+            <div style={{ fontSize: 11, color: T.teal, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Dành cho Quản trị viên
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.tealDark, fontFamily: "'Space Grotesk',sans-serif" }}>
+              Kho Tri thức AI Chuẩn bị trước
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 30, height: 30, borderRadius: "50%", border: "none",
+              background: "rgba(0,0,0,0.06)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <X size={16} color={T.inkSoft} />
+          </button>
+        </div>
+
+        {/* Tab switcher */}
+        <div style={{ display: "flex", borderBottom: `1px solid ${T.border}`, background: T.card, padding: "4px 8px" }}>
+          {[
+            { id: "list", label: `Đã nạp (${items.length})` },
+            { id: "add_faq", label: "+ Thêm FAQ" },
+            { id: "add_doc", label: "+ Nạp tài liệu" },
+          ].map((t) => {
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setActiveTab(t.id); setNotice(""); }}
+                style={{
+                  flex: 1, padding: "8px 4px", border: "none", background: "transparent",
+                  fontSize: 12, fontWeight: active ? 700 : 500,
+                  color: active ? T.teal : T.inkSoft,
+                  borderBottom: active ? `2px solid ${T.teal}` : "2px solid transparent",
+                  cursor: "pointer",
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {notice && (
+          <div style={{
+            margin: "10px 14px 0", padding: "8px 12px", borderRadius: 8,
+            background: "rgba(31,111,99,0.12)", color: T.teal, fontSize: 12, fontWeight: 600,
+            textAlign: "center",
+          }}>
+            {notice}
+          </div>
+        )}
+
+        {/* Modal content body */}
+        <div style={{ padding: 14, overflowY: "auto", flex: 1, boxSizing: "border-box" }}>
+          {/* TAB 1: Danh sách tri thức */}
+          {activeTab === "list" && (
+            <div>
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 10, lineHeight: 1.4 }}>
+                Dưới đây là các tài liệu và câu hỏi mà AI ("Tuấn") sẽ tự động tra cứu để trả lời cho mọi sinh viên.
+              </div>
+
+              {loading ? (
+                <div style={{ textAlign: "center", padding: 24, fontSize: 12.5, color: T.inkSoft }}>Đang tải dữ liệu tri thức...</div>
+              ) : items.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 30, color: T.inkSoft, fontSize: 12.5 }}>
+                  Chưa có tài liệu nào. Bạn hãy bấm <b>+ Thêm FAQ</b> hoặc <b>+ Nạp tài liệu</b> để huấn luyện AI.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`,
+                        background: item.is_active ? T.paper : "#E8E4D688",
+                        opacity: item.is_active ? 1 : 0.65,
+                        display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4,
+                            background: item.type === "faq" ? "rgba(217,164,65,0.2)" : "rgba(31,111,99,0.15)",
+                            color: item.type === "faq" ? T.goldDark : T.teal,
+                            textTransform: "uppercase",
+                          }}>
+                            {item.type === "faq" ? "FAQ" : "Tài liệu"}
+                          </span>
+                          {item.file_name && (
+                            <span style={{ fontSize: 10.5, color: T.inkSoft, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              📎 {item.file_name}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 3 }}>
+                          {item.title}
+                        </div>
+                        <div style={{
+                          fontSize: 11.5, color: T.inkSoft, lineHeight: 1.4,
+                          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                        }}>
+                          {item.content}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => handleToggle(item.id)}
+                          title={item.is_active ? "Bấm để tắt" : "Bấm để bật"}
+                          style={{
+                            padding: "3px 8px", borderRadius: 6, border: `1px solid ${item.is_active ? T.teal : T.border}`,
+                            background: item.is_active ? T.teal : "transparent",
+                            color: item.is_active ? "#fff" : T.inkSoft,
+                            fontSize: 10.5, fontWeight: 600, cursor: "pointer",
+                          }}
+                        >
+                          {item.is_active ? "Bật" : "Tắt"}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id, item.title)}
+                          title="Xóa tài liệu"
+                          style={{
+                            border: "none", background: "transparent", color: T.brick,
+                            cursor: "pointer", padding: 2, display: "flex", alignItems: "center",
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Thêm FAQ */}
+          {activeTab === "add_faq" && (
+            <form onSubmit={handleAddFaq}>
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 12 }}>
+                Tạo các câu hỏi - trả lời mẫu để AI ưu tiên trả lời chính xác khi sinh viên hỏi câu tương tự.
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                  Chủ đề / Tên câu hỏi:
+                </label>
+                <input
+                  type="text"
+                  value={faqTitle}
+                  onChange={(e) => setFaqTitle(e.target.value)}
+                  placeholder="Ví dụ: Quy định học bổng khuyến khích"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, background: T.paper, boxSizing: "border-box" }}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                  Câu hỏi mẫu (tùy chọn):
+                </label>
+                <input
+                  type="text"
+                  value={faqQuestion}
+                  onChange={(e) => setFaqQuestion(e.target.value)}
+                  placeholder="Ví dụ: Điều kiện để nhận học bổng sinh viên là gì?"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, background: T.paper, boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                  Câu trả lời chuẩn của hệ thống:
+                </label>
+                <textarea
+                  rows={4}
+                  value={faqAnswer}
+                  onChange={(e) => setFaqAnswer(e.target.value)}
+                  placeholder="Nhập nội dung câu trả lời chuẩn xác mà bạn muốn AI phản hồi cho sinh viên..."
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.paper, boxSizing: "border-box", resize: "vertical" }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn-gold"
+                style={{
+                  width: "100%", padding: "10px 0", borderRadius: 8, border: "none",
+                  background: T.gold, color: "#3A2A08", fontSize: 13.5, fontWeight: 700, cursor: submitting ? "default" : "pointer",
+                }}
+              >
+                {submitting ? "Đang lưu..." : "Lưu vào Kho Tri thức"}
+              </button>
+            </form>
+          )}
+
+          {/* TAB 3: Nạp tài liệu (File TXT/MD/PDF hoặc dán text) */}
+          {activeTab === "add_doc" && (
+            <form onSubmit={handleAddDocument}>
+              <div style={{ fontSize: 11.5, color: T.inkSoft, marginBottom: 12 }}>
+                Nạp cẩm nang, quy định, sổ tay sinh viên qua file (.pdf, .txt, .md) hoặc dán văn bản trực tiếp.
+              </div>
+
+              {/* Upload file box */}
+              <div style={{
+                border: `2px dashed ${T.border}`, borderRadius: 10, padding: "14px 12px",
+                textAlign: "center", marginBottom: 12, background: selectedFile ? "rgba(31,111,99,0.06)" : T.paper,
+              }}>
+                <input
+                  type="file"
+                  id="kb-file-upload"
+                  accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setSelectedFile(e.target.files[0]);
+                      if (!docTitle) setDocTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
+                    }
+                  }}
+                  style={{ display: "none" }}
+                />
+                <label htmlFor="kb-file-upload" style={{ cursor: "pointer", display: "block" }}>
+                  <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.teal }}>
+                    {selectedFile ? `Đã chọn: ${selectedFile.name}` : "Chọn file PDF, TXT hoặc MD"}
+                  </div>
+                  <div style={{ fontSize: 11, color: T.inkSoft, marginTop: 2 }}>
+                    (Dung lượng tối đa 10MB — Hệ thống tự động đọc và trích xuất chữ)
+                  </div>
+                </label>
+                {selectedFile && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    style={{ marginTop: 8, fontSize: 11, color: T.brick, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Bỏ chọn file này
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                  Tên tài liệu / Sổ tay:
+                </label>
+                <input
+                  type="text"
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  placeholder="Ví dụ: Sổ tay quy chế sinh viên 2026"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, background: T.paper, boxSizing: "border-box" }}
+                  required={!selectedFile}
+                />
+              </div>
+
+              {!selectedFile && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
+                    Hoặc dán nội dung văn bản trực tiếp:
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={docContent}
+                    onChange={(e) => setDocContent(e.target.value)}
+                    placeholder="Dán toàn bộ nội dung văn bản, bài viết hướng dẫn hoặc sổ tay vào đây..."
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.paper, boxSizing: "border-box", resize: "vertical" }}
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting || (!selectedFile && !docContent.trim())}
+                className="btn-gold"
+                style={{
+                  width: "100%", padding: "10px 0", borderRadius: 8, border: "none",
+                  background: T.gold, color: "#3A2A08", fontSize: 13.5, fontWeight: 700,
+                  cursor: submitting || (!selectedFile && !docContent.trim()) ? "default" : "pointer",
+                  opacity: submitting || (!selectedFile && !docContent.trim()) ? 0.6 : 1,
+                }}
+              >
+                {submitting ? "Đang xử lý tải lên..." : selectedFile ? "Tải lên & Huấn luyện AI" : "Lưu tài liệu"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------- Chat ----------------
-function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, chatEndRef }) {
+function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, chatEndRef, user, token }) {
+  const isAdmin = user?.role === "admin";
+  const [showKBModal, setShowKBModal] = useState(false);
+  const [kbCount, setKbCount] = useState(4);
+
+  useEffect(() => {
+    if (isAdmin && token) {
+      knowledgeApi.list(token)
+        .then((data) => setKbCount(data.knowledge?.length || 0))
+        .catch(() => {});
+    }
+  }, [isAdmin, token]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ marginTop: 12, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-        <Target size={16} color={T.teal} />
-        <div style={{ fontSize: 12, color: T.inkSoft }}>Tuấn biết dữ liệu chi tiêu của bạn để đưa lời khuyên phù hợp.</div>
+      <div style={{ marginTop: 12, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+          <Target size={16} color={T.teal} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 12, color: T.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Học tập theo tài liệu & dữ liệu chi tiêu
+          </div>
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setShowKBModal(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+              borderRadius: 8, border: `1px solid ${T.teal}`, background: "rgba(31,111,99,0.08)",
+              color: T.teal, fontSize: 11.5, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <BookOpen size={13} />
+            <span>Tri thức AI ({kbCount})</span>
+          </button>
+        )}
       </div>
+
+      {showKBModal && (
+        <KnowledgeBaseModal
+          token={token}
+          onClose={() => setShowKBModal(false)}
+          onRefresh={(count) => setKbCount(count)}
+        />
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
         {messages.map((m, i) => (

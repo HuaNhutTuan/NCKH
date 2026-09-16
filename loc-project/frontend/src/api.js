@@ -69,3 +69,24 @@ export const settingsApi = {
     request("/settings", { method: "PUT", token, body: settings }),
 };
 
+export const knowledgeApi = {
+  list: (token) => request("/knowledge", { token }),
+  create: (token, item) => request("/knowledge", { method: "POST", token, body: item }),
+  upload: async (token, file, title) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (title) formData.append("title", title);
+    const res = await fetch(`${API_BASE}/knowledge/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Có lỗi xảy ra khi tải tài liệu.");
+    return data;
+  },
+  toggle: (token, id) => request(`/knowledge/${id}/toggle`, { method: "PATCH", token }),
+  remove: (token, id) => request(`/knowledge/${id}`, { method: "DELETE", token }),
+};
+
+
