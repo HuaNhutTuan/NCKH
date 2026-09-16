@@ -9,7 +9,7 @@ router.use(requireAuth); // mọi route bên dưới đều yêu cầu đăng nh
 router.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT id, type, category, amount, note, tx_date AS date FROM transactions WHERE user_id = ? ORDER BY tx_date DESC, id DESC",
+      "SELECT id, type, category, amount, note, DATE_FORMAT(tx_date, '%Y-%m-%d') AS date FROM transactions WHERE user_id = ? ORDER BY tx_date DESC, id DESC",
       [req.userId]
     );
     res.json({ transactions: rows });
@@ -27,17 +27,29 @@ router.post("/", async (req, res) => {
     if (!["income", "expense"].includes(type)) {
       return res.status(400).json({ error: "Loại giao dịch không hợp lệ." });
     }
-    if (!category || !amount || Number(amount) <= 0 || !date) {
+
+    // Chuẩn hóa ngày theo múi giờ Việt Nam (YYYY-MM-DD)
+    let txDate = date;
+    if (!txDate) {
+      txDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+    } else if (typeof txDate === "string" && txDate.includes("T")) {
+      const d = new Date(txDate);
+      if (!isNaN(d.getTime())) {
+        txDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d);
+      }
+    }
+
+    if (!category || !amount || Number(amount) <= 0 || !txDate) {
       return res.status(400).json({ error: "Vui lòng nhập đủ danh mục, số tiền hợp lệ và ngày." });
     }
 
     const [result] = await pool.query(
       "INSERT INTO transactions (user_id, type, category, amount, note, tx_date) VALUES (?, ?, ?, ?, ?, ?)",
-      [req.userId, type, category, amount, note || "", date]
+      [req.userId, type, category, amount, note || "", txDate]
     );
 
     res.status(201).json({
-      transaction: { id: result.insertId, type, category, amount: Number(amount), note: note || "", date },
+      transaction: { id: result.insertId, type, category, amount: Number(amount), note: note || "", date: txDate },
     });
   } catch (err) {
     console.error(err);

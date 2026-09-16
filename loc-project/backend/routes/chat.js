@@ -53,7 +53,7 @@ router.post("/", async (req, res) => {
       };
     }
 
-    const candidateModels = ["gemini-3.5-flash", "gemini-3-flash-preview", "gemini-flash-latest"];
+    const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
     let reply = null;
     let lastError = null;
 

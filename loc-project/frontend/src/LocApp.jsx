@@ -53,8 +53,44 @@ const catMeta = (id) => ALL_CATS.find((c) => c.id === id) || EXPENSE_CATS[7];
 const fmtVND = (n) =>
   Math.round(n).toLocaleString("vi-VN") + " đ";
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const monthKey = (d) => d.slice(0, 7);
+const todayStr = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+
+function formatDateVN(dateInput) {
+  if (!dateInput) return "";
+  if (typeof dateInput === "string") {
+    // Nếu là chuỗi ISO từ server (có T như 2026-09-10T17:00:00.000Z)
+    if (dateInput.includes("T")) {
+      const d = new Date(dateInput);
+      if (!isNaN(d.getTime())) {
+        return new Intl.DateTimeFormat("vi-VN", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(d);
+      }
+    }
+    // Nếu là dạng chuỗi chuẩn YYYY-MM-DD
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return `${match[3]}/${match[2]}/${match[1]}`;
+    }
+  }
+  return String(dateInput);
+}
+
+const monthKey = (d) => {
+  if (!d) return "";
+  if (typeof d === "string" && d.includes("T")) {
+    const dt = new Date(d);
+    if (!isNaN(dt.getTime())) {
+      const vnStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(dt);
+      return vnStr.slice(0, 7);
+    }
+  }
+  return String(d).slice(0, 7);
+};
 const THIS_MONTH = monthKey(todayStr());
 
 const LESSONS = [
@@ -125,7 +161,16 @@ export default function LocApp() {
       .then(([txData, budgetData, settingsData]) => {
         if (cancelled) return;
         setTransactions(
-          txData.transactions.map((t) => ({ ...t, cat: t.category, amount: Number(t.amount) }))
+          txData.transactions.map((t) => {
+            let cleanDate = t.date;
+            if (typeof cleanDate === "string" && cleanDate.includes("T")) {
+              const d = new Date(cleanDate);
+              if (!isNaN(d.getTime())) {
+                cleanDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d);
+              }
+            }
+            return { ...t, cat: t.category, amount: Number(t.amount), date: cleanDate };
+          })
         );
         setBudgets(budgetData.budgets);
         if (settingsData?.settings) {
@@ -759,7 +804,7 @@ function TxRow({ t, onDelete }) {
       <IconBadge Icon={meta.Icon} color={meta.color} size={34} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.note}</div>
-        <div style={{ fontSize: 11, color: T.inkSoft }}>{meta.label} · {t.date}</div>
+        <div style={{ fontSize: 11, color: T.inkSoft }}>{meta.label} · {formatDateVN(t.date)}</div>
       </div>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, flexShrink: 0 }}>
         {t.type === "income" ? "+" : "-"}{fmtVND(t.amount)}
@@ -778,25 +823,532 @@ function TxRow({ t, onDelete }) {
   );
 }
 
+// ---------------- Date Helpers for Transactions ----------------
+function toISODate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekRange(refDate) {
+  const d = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+  const day = d.getDay(); // 0: Chủ Nhật, 1: Thứ Hai ...
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const startDate = toISODate(monday);
+  const endDate = toISODate(sunday);
+  const label = `${monday.getDate()}/${monday.getMonth() + 1} - ${sunday.getDate()}/${sunday.getMonth() + 1}/${sunday.getFullYear()}`;
+  return { startDate, endDate, label };
+}
+
+function isSamePeriod(period, refDate) {
+  const now = new Date();
+  if (period === "week") {
+    const { startDate, endDate } = getWeekRange(now);
+    const ref = toISODate(refDate);
+    return ref >= startDate && ref <= endDate;
+  }
+  if (period === "month") {
+    return now.getFullYear() === refDate.getFullYear() && now.getMonth() === refDate.getMonth();
+  }
+  if (period === "year") {
+    return now.getFullYear() === refDate.getFullYear();
+  }
+  return true;
+}
+
 // ---------------- Transactions ----------------
 function TransactionsTab({ transactions, onDelete, onAdd }) {
-  const sorted = [...transactions].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const [period, setPeriod] = useState("month"); // "week" | "month" | "year" | "all"
+  const [refDate, setRefDate] = useState(() => new Date());
+  const [filterType, setFilterType] = useState("all"); // "all" | "expense" | "income"
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Chuyển kỳ thời gian trước / sau
+  function handlePrev() {
+    setCurrentPage(1);
+    setRefDate((prev) => {
+      const next = new Date(prev);
+      if (period === "week") next.setDate(next.getDate() - 7);
+      else if (period === "month") next.setMonth(next.getMonth() - 1);
+      else if (period === "year") next.setFullYear(next.getFullYear() - 1);
+      return next;
+    });
+  }
+
+  function handleNext() {
+    setCurrentPage(1);
+    setRefDate((prev) => {
+      const next = new Date(prev);
+      if (period === "week") next.setDate(next.getDate() + 7);
+      else if (period === "month") next.setMonth(next.getMonth() + 1);
+      else if (period === "year") next.setFullYear(next.getFullYear() + 1);
+      return next;
+    });
+  }
+
+  function handleResetCurrent() {
+    setCurrentPage(1);
+    setRefDate(new Date());
+  }
+
+  // Tiêu đề kỳ hiển thị
+  const periodLabel = useMemo(() => {
+    if (period === "week") {
+      return getWeekRange(refDate).label;
+    }
+    if (period === "month") {
+      return `Tháng ${String(refDate.getMonth() + 1).padStart(2, "0")}/${refDate.getFullYear()}`;
+    }
+    if (period === "year") {
+      return `Năm ${refDate.getFullYear()}`;
+    }
+    return "Tất cả thời gian";
+  }, [period, refDate]);
+
+  const isCurrent = isSamePeriod(period, refDate);
+
+  // Danh sách đã lọc theo kỳ
+  const periodTransactions = useMemo(() => {
+    let list = [...transactions];
+    if (period === "week") {
+      const { startDate, endDate } = getWeekRange(refDate);
+      list = list.filter((t) => t.date >= startDate && t.date <= endDate);
+    } else if (period === "month") {
+      const monthPrefix = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
+      list = list.filter((t) => t.date.startsWith(monthPrefix));
+    } else if (period === "year") {
+      const yearPrefix = `${refDate.getFullYear()}-`;
+      list = list.filter((t) => t.date.startsWith(yearPrefix));
+    }
+    return list;
+  }, [transactions, period, refDate]);
+
+  // Thống kê nhanh của kỳ được chọn
+  const periodStats = useMemo(() => {
+    const income = periodTransactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const expense = periodTransactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    return { income, expense, balance: income - expense };
+  }, [periodTransactions]);
+
+  // Danh sách sau khi lọc thêm loại giao dịch
+  const filtered = useMemo(() => {
+    let list = [...periodTransactions];
+    if (filterType !== "all") {
+      list = list.filter((t) => t.type === filterType);
+    }
+    return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.id || 0) - (a.id || 0)));
+  }, [periodTransactions, filterType]);
+
+  // Phân trang
+  const totalItems = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (validCurrentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, validCurrentPage, pageSize]);
+
+  // Tạo danh sách số trang hiển thị
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (validCurrentPage <= 3) {
+      pages.push(1, 2, 3, 4, "...", totalPages);
+    } else if (validCurrentPage >= totalPages - 2) {
+      pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, "...", validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, "...", totalPages);
+    }
+    return pages;
+  }, [totalPages, validCurrentPage]);
+
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Tất cả giao dịch</div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
+            Lịch sử giao dịch
+          </div>
+          <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 2 }}>
+            Quản lý và tra cứu chi tiêu theo kỳ thời gian
+          </div>
+        </div>
         <button
           onClick={onAdd}
           className="btn-teal"
-          style={{ background: T.teal, color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          style={{
+            background: T.teal,
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "7px 12px",
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            boxShadow: "0 2px 6px rgba(31,111,99,0.2)",
+          }}
         >
-          <Plus size={14} /> Thêm
+          <Plus size={15} /> Thêm giao dịch
         </button>
       </div>
-      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" }}>
-        {sorted.length === 0 ? <div style={{ padding: 16 }}><EmptyNote text="Chưa có giao dịch nào." /></div> :
-          sorted.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} />)}
+
+      {/* Tabs chọn chu kỳ: Tuần / Tháng / Năm / Tất cả */}
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          background: T.paperLine,
+          padding: 4,
+          borderRadius: 10,
+          marginBottom: 12,
+        }}
+      >
+        {[
+          { id: "week", label: "Theo tuần" },
+          { id: "month", label: "Theo tháng" },
+          { id: "year", label: "Theo năm" },
+          { id: "all", label: "Tất cả" },
+        ].map((tab) => {
+          const active = period === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setPeriod(tab.id);
+                setCurrentPage(1);
+              }}
+              style={{
+                flex: 1,
+                padding: "6px 0",
+                fontSize: 12,
+                fontWeight: active ? 700 : 500,
+                color: active ? "#fff" : T.inkSoft,
+                background: active ? T.teal : "transparent",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Điều hướng kỳ (Trước / Hiện tại / Sau) - Chỉ hiện khi không phải 'all' */}
+      {period !== "all" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: T.card,
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            padding: "8px 12px",
+            marginBottom: 12,
+          }}
+        >
+          <button
+            onClick={handlePrev}
+            title="Kỳ trước"
+            style={{
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              borderRadius: 6,
+              color: T.ink,
+              cursor: "pointer",
+              padding: "4px 8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "center" }}>
+            <Calendar size={15} color={T.teal} />
+            <span style={{ fontSize: 13.5, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
+              {periodLabel}
+            </span>
+            {!isCurrent ? (
+              <button
+                onClick={handleResetCurrent}
+                style={{
+                  background: T.paperLine,
+                  border: "none",
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: T.tealDark,
+                  padding: "2px 6px",
+                  cursor: "pointer",
+                }}
+              >
+                Về hiện tại
+              </button>
+            ) : (
+              <span
+                style={{
+                  background: T.teal + "20",
+                  color: T.tealDark,
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "2px 6px",
+                }}
+              >
+                {period === "week" ? "Tuần này" : period === "month" ? "Tháng này" : "Năm nay"}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={handleNext}
+            title="Kỳ sau"
+            style={{
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              borderRadius: 6,
+              color: T.ink,
+              cursor: "pointer",
+              padding: "4px 8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Thẻ tóm tắt Thu / Chi / Chênh lệch của kỳ */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 8,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
+          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Tổng thu</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.teal, fontFamily: "'Space Grotesk',sans-serif", marginTop: 2 }}>
+            +{fmtVND(periodStats.income)}
+          </div>
+        </div>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
+          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Tổng chi</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.brick, fontFamily: "'Space Grotesk',sans-serif", marginTop: 2 }}>
+            -{fmtVND(periodStats.expense)}
+          </div>
+        </div>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
+          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Chênh lệch</div>
+          <div
+            style={{
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: periodStats.balance >= 0 ? T.tealDark : T.brick,
+              fontFamily: "'Space Grotesk',sans-serif",
+              marginTop: 2,
+            }}
+          >
+            {periodStats.balance >= 0 ? "+" : ""}{fmtVND(periodStats.balance)}
+          </div>
+        </div>
+      </div>
+
+      {/* Bộ lọc loại giao dịch (Tất cả / Chi / Thu) & Tùy chọn số lượng mỗi trang */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+          flexWrap: "wrap",
+          gap: 6,
+        }}
+      >
+        <div style={{ display: "flex", gap: 4 }}>
+          {[
+            { id: "all", label: `Tất cả (${periodTransactions.length})` },
+            { id: "expense", label: `Chi (${periodTransactions.filter((t) => t.type === "expense").length})` },
+            { id: "income", label: `Thu (${periodTransactions.filter((t) => t.type === "income").length})` },
+          ].map((f) => {
+            const active = filterType === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => {
+                  setFilterType(f.id);
+                  setCurrentPage(1);
+                }}
+                style={{
+                  background: active ? T.ink : "transparent",
+                  color: active ? "#fff" : T.inkSoft,
+                  border: `1px solid ${active ? T.ink : T.border}`,
+                  borderRadius: 20,
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  fontWeight: active ? 600 : 500,
+                  cursor: "pointer",
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dropdown chọn số dòng/trang */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.inkSoft }}>
+          <span>Mỗi trang:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            style={{
+              background: T.card,
+              border: `1px solid ${T.border}`,
+              borderRadius: 6,
+              padding: "2px 6px",
+              fontSize: 11,
+              color: T.ink,
+              cursor: "pointer",
+            }}
+          >
+            <option value={5}>5 mục</option>
+            <option value={10}>10 mục</option>
+            <option value={20}>20 mục</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Bảng danh sách giao dịch */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+        {totalItems === 0 ? (
+          <div style={{ padding: 24, textAlign: "center" }}>
+            <EmptyNote text="Không có giao dịch nào trong khoảng thời gian này." />
+          </div>
+        ) : (
+          paginatedTransactions.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} />)
+        )}
+      </div>
+
+      {/* Phân trang (Pagination footer) */}
+      {totalItems > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 8,
+            padding: "8px 4px",
+          }}
+        >
+          <div style={{ fontSize: 11.5, color: T.inkSoft }}>
+            Hiển thị {(validCurrentPage - 1) * pageSize + 1} - {Math.min(validCurrentPage * pageSize, totalItems)} trong tổng số {totalItems} giao dịch
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {/* Nút Trước */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={validCurrentPage <= 1}
+              style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 6,
+                padding: "4px 8px",
+                fontSize: 11.5,
+                color: validCurrentPage <= 1 ? "#bbb" : T.ink,
+                cursor: validCurrentPage <= 1 ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <ChevronLeft size={13} /> Trước
+            </button>
+
+            {/* Số trang */}
+            {pageNumbers.map((p, idx) => {
+              if (p === "...") {
+                return (
+                  <span key={`dots-${idx}`} style={{ padding: "0 4px", color: T.inkSoft, fontSize: 11 }}>
+                    ...
+                  </span>
+                );
+              }
+              const active = p === validCurrentPage;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setCurrentPage(p)}
+                  style={{
+                    minWidth: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    border: active ? "none" : `1px solid ${T.border}`,
+                    background: active ? T.teal : T.card,
+                    color: active ? "#fff" : T.ink,
+                    fontSize: 11.5,
+                    fontWeight: active ? 700 : 500,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+
+            {/* Nút Sau */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={validCurrentPage >= totalPages}
+              style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 6,
+                padding: "4px 8px",
+                fontSize: 11.5,
+                color: validCurrentPage >= totalPages ? "#bbb" : T.ink,
+                cursor: validCurrentPage >= totalPages ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              Sau <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

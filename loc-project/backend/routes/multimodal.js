@@ -16,7 +16,7 @@ const upload = multer({
 });
 
 // ─── Prompt dùng chung ────────────────────────────────────────────────────────
-const TODAY = () => new Date().toISOString().slice(0, 10);
+const TODAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
 
 const PARSE_SYSTEM_PROMPT = `Bạn là trợ lý tài chính thông minh cho sinh viên Việt Nam.
 Nhiệm vụ: Phân tích đầu vào (văn bản hoặc hình ảnh hóa đơn/chuyển khoản) và trả về JSON hợp lệ theo schema sau.
@@ -54,9 +54,9 @@ QUY TẮC:
 // ─── Helper: gọi Gemini API ───────────────────────────────────────────────────
 async function callGemini(apiKey, contents) {
   const candidateModels = [
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
   ];
   let lastError = null;
 

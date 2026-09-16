@@ -16,7 +16,8 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || "loc_app",
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
+  timezone: "+07:00",
+  dateStrings: true,
   ssl:
     process.env.DB_SSL === "true" || isCloud
       ? { rejectUnauthorized: false }
