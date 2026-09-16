@@ -51,7 +51,12 @@ router.post("/register", async (req, res) => {
       user: { id: result.insertId, name, email },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi đăng ký:", err);
+    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ER_ACCESS_DENIED_ERROR" || !process.env.DB_HOST) {
+      return res.status(500).json({
+        error: "Chưa kết nối cơ sở dữ liệu MySQL trên Render. Vui lòng thêm biến môi trường DB vào Render Dashboard."
+      });
+    }
     res.status(500).json({ error: "Có lỗi xảy ra khi đăng ký, thử lại sau." });
   }
 });
@@ -95,7 +100,12 @@ router.post("/login", async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi đăng nhập:", err);
+    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ER_ACCESS_DENIED_ERROR" || !process.env.DB_HOST) {
+      return res.status(500).json({
+        error: "Chưa kết nối cơ sở dữ liệu MySQL trên Render. Vui lòng thêm biến môi trường DB vào Render Dashboard."
+      });
+    }
     res.status(500).json({ error: "Có lỗi xảy ra khi đăng nhập, thử lại sau." });
   }
 });
