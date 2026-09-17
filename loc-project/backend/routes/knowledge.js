@@ -3,6 +3,7 @@ const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const pool = require("../db");
 const { requireAdmin } = require("../middleware/auth");
+const { clearKnowledgeCache } = require("./chat");
 
 const router = express.Router();
 const upload = multer({
@@ -53,6 +54,8 @@ router.post("/", async (req, res) => {
       [type, title.trim(), content.trim(), req.userId]
     );
 
+    if (typeof clearKnowledgeCache === "function") clearKnowledgeCache();
+
     res.status(201).json({
       success: true,
       item: {
@@ -99,6 +102,8 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       [title, extractedText, originalName, req.userId]
     );
 
+    if (typeof clearKnowledgeCache === "function") clearKnowledgeCache();
+
     res.status(201).json({
       success: true,
       item: {
@@ -128,6 +133,8 @@ router.patch("/:id/toggle", async (req, res) => {
     const newActive = rows[0].is_active ? 0 : 1;
     await pool.query("UPDATE knowledge_base SET is_active = ? WHERE id = ?", [newActive, id]);
 
+    if (typeof clearKnowledgeCache === "function") clearKnowledgeCache();
+
     res.json({ success: true, is_active: newActive });
   } catch (err) {
     console.error("Lỗi bật/tắt tri thức:", err);
@@ -143,6 +150,9 @@ router.delete("/:id", async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Không tìm thấy tài liệu để xóa." });
     }
+
+    if (typeof clearKnowledgeCache === "function") clearKnowledgeCache();
+
     res.json({ success: true });
   } catch (err) {
     console.error("Lỗi xóa tri thức:", err);

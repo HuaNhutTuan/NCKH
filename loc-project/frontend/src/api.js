@@ -41,6 +41,61 @@ export const budgetsApi = {
 export const chatApi = {
   send: (token, { messages, systemPrompt }) =>
     request("/chat", { method: "POST", token, body: { messages, systemPrompt } }),
+
+  sendStream: async (token, { messages, systemPrompt }, onChunk) => {
+    const res = await fetch(`${API_BASE}/chat/stream`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ messages, systemPrompt }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Không thể kết nối với AI.");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let fullReply = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed === "data: [DONE]") {
+          return fullReply;
+        }
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            if (data.text) {
+              fullReply += data.text;
+              if (onChunk) onChunk(data.text, fullReply);
+            }
+          } catch (e) {
+            if (e.message && e.message !== "Unexpected end of JSON input") {
+              throw e;
+            }
+          }
+        }
+      }
+    }
+
+    return fullReply;
+  },
 };
 
 export const multimodalApi = {

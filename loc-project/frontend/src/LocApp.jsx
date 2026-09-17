@@ -364,19 +364,41 @@ Không đưa lời khuyên đầu tư cụ thể (không gợi ý mã cổ phi�
 Dữ liệu tài chính hiện tại của người dùng trong tháng này: Thu nhập ${fmtVND(stats.income)}, Chi tiêu ${fmtVND(stats.expense)}, Số dư hiện tại ${fmtVND(stats.balance)}. Top danh mục chi tiêu: ${topCats || "chưa có dữ liệu"}. ${overBudgetCats.length ? "Đã vượt ngân sách ở: " + overBudgetCats.join(", ") + "." : "Chưa vượt ngân sách nào."}
 Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá nhân hoá, nhưng đừng liệt kê lại toàn bộ số liệu nếu người dùng không hỏi trực tiếp.`;
 
+    let hasAddedBotMsg = false;
+
     try {
-      const data = await chatApi.send(token, {
-        messages: nextMessages,
-        systemPrompt,
-      });
-      const reply =
-        data.reply || "Xin lỗi, mình chưa nhận được phản hồi rõ ràng. Bạn thử hỏi lại nhé.";
-      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: e.message || "Có lỗi kết nối, bạn thử gửi lại tin nhắn nhé." },
-      ]);
+      // Dùng streaming để chữ hiển thị tức thì sau ~0.5s theo thời gian thực
+      await chatApi.sendStream(
+        token,
+        { messages: nextMessages, systemPrompt },
+        (chunk, fullText) => {
+          if (!hasAddedBotMsg) {
+            hasAddedBotMsg = true;
+            setMessages((prev) => [...prev, { role: "assistant", text: fullText }]);
+          } else {
+            setMessages((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { role: "assistant", text: fullText };
+              return updated;
+            });
+          }
+        }
+      );
+    } catch (streamErr) {
+      console.warn("Lỗi stream, chuyển sang gọi API thường:", streamErr.message);
+      // Fallback gọi API thường nếu stream gặp trục trặc
+      if (!hasAddedBotMsg) {
+        try {
+          const data = await chatApi.send(token, { messages: nextMessages, systemPrompt });
+          const reply = data.reply || "Xin lỗi, mình chưa nhận được phản hồi rõ ràng. Bạn thử hỏi lại nhé.";
+          setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+        } catch (fallbackErr) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", text: fallbackErr.message || "Có lỗi kết nối, bạn thử gửi lại tin nhắn nhé." },
+          ]);
+        }
+      }
     } finally {
       setChatLoading(false);
     }
