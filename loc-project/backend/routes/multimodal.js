@@ -43,13 +43,29 @@ SCHEMA (trả về JSON thuần, KHÔNG bọc trong markdown code block):
   "rawSummary": "<tóm tắt ngắn bằng tiếng Việt những gì bạn tìm thấy>"
 }
 
-QUY TẮC:
-- Số tiền VND: nếu thấy "k" hoặc "K" → nhân 1000; "tr" hoặc "triệu" → nhân 1.000.000; "đ" → giữ nguyên.
-- Phát hiện chi tiêu nhóm khi: thấy từ "cùng N người", "chia", "mấy đứa", "tiền phòng trọ", số người được đề cập rõ ràng.
-- Nếu phát hiện nhiều giao dịch riêng biệt trong một hóa đơn, tách thành nhiều phần tử trong mảng "transactions".
-- Nếu là ảnh chuyển khoản: loại thường là "expense" (người gửi) hoặc "income" (người nhận) — suy ra từ ngữ cảnh.
-- Nếu không tìm thấy thông tin tài chính rõ ràng: trả về mảng transactions rỗng và confidence = "low".
-- Luôn trả về JSON hợp lệ, không thêm giải thích hay markdown.`;
+QUY TẮC BẮT BUỘC VỀ THU NHẬP (income) VÀ CHI TIÊU (expense):
+1. THU NHẬP (income) - Mọi trường hợp tiền vào ví/tài khoản người dùng:
+   - Người khác cho/tặng/chuyển: "cho tôi", "cho mình", "cho em", "[chủ ngữ] cho [tiền]" (mẹ cho 500k, bạn cho 50k, anh trai cho 200k...), "được cho", "được biếu", "được tặng", "lì xì", "mừng tuổi".
+   - Tài khoản nhận tiền: "được cộng [tiền]", "được chuyển", "tài khoản được cộng", "nhận được", "ting ting", "được nạp", "tiền nhà gửi lên", "bố mẹ gửi tiền".
+   - May mắn / bất ngờ: "nhặt được", "lượm được", "trúng số", "trúng thưởng", "nhặt được tiền".
+   - Bán đồ / nhận lại tiền: "bán được", "thanh lý được", "người khác trả nợ", "bạn trả nợ", "hoàn tiền", "cashback", "thu về".
+   - Thu nhập từ lao động / học tập: lương, thưởng, làm thêm, tiền tip, hoa hồng, dạy kèm, chạy xe grab kiếm được, học bổng.
+   - Danh mục tương ứng:
+     + "scholarship": học bổng, tiền thưởng thành tích học tập.
+     + "allowance": tiền chu cấp từ gia đình, bố mẹ, người thân.
+     + "parttime": lương, làm thêm, thù lao, tiền tip, chạy grab/be, gia sư.
+     + "other_income": các khoản thu khác (nhặt được, được cộng, bạn cho, được cho tiền, lì xì, trúng thưởng, trả nợ, thanh lý đồ cũ...).
+
+2. CHI TIÊU (expense) - Mọi trường hợp tiền ra khỏi ví:
+   - Mua đồ, ăn uống, đi lại, giải trí, đóng tiền học, nộp tiền trọ, đóng tiền điện nước, mua sắm.
+   - Người dùng cho người khác tiền hoặc cho mượn: "tôi cho bạn", "mình cho em", "cho nó mượn", "cho vay".
+   - Bị rơi mất tiền, bị phạt: "bị rơi tiền", "bị phạt giao thông".
+
+3. QUY TẮC CHUNG KHÁC:
+   - Số tiền VND: "k" hoặc "K" → nhân 1000; "tr" hoặc "triệu" → nhân 1.000.000; "đ" → giữ nguyên.
+   - Phát hiện chi tiêu nhóm khi: thấy từ "cùng N người", "chia", "mấy đứa", "tiền phòng trọ", số người được đề cập rõ ràng.
+   - Nếu không tìm thấy thông tin tài chính rõ ràng: trả về mảng transactions rỗng và confidence = "low".
+   - Luôn trả về JSON hợp lệ, không thêm bất kỳ văn bản giải thích nào ngoài JSON.`;
 
 // ─── Helper: gọi Gemini API ───────────────────────────────────────────────────
 async function callGemini(apiKey, contents) {
@@ -160,7 +176,7 @@ function tryFastParseVietnamese(rawText) {
           const cleanNum = numMatch[1].replace(/[.,]/g, "");
           const val = parseInt(cleanNum, 10);
           if (val >= 1000) amount = val;
-          else if (val > 0 && val < 1000 && (text.includes("k") || text.includes("nghìn"))) amount = val * 1000;
+          else if (val > 0 && val < 1000 && (text.includes("k") || text.includes("nghìn") || text.includes("ngàn"))) amount = val * 1000;
         }
       }
     }
@@ -173,13 +189,44 @@ function tryFastParseVietnamese(rawText) {
   let category = "food";
   let note = rawText.trim();
 
-  // Nhận diện Thu nhập
-  if (/(lương|thưởng|nhận|thu|trợ cấp|học bổng|ba mẹ cho|bố mẹ cho|gia đình gửi|chuyển khoản nhận)/i.test(text)) {
+  // Kiểm tra nếu người dùng cho người khác tiền / cho mượn (đây là CHI TIÊU)
+  const isOutgoingGiving = /(?:tôi|tao|mình|em)\s+cho\s+(?:bạn|mượn|vay|nó|em|anh|chị|ai|người)/i.test(text) ||
+                           /(?:cho\s+(?:bạn|nó|người khác)\s+mượn|cho\s+vay|cho\s+mượn)/i.test(text);
+
+  // Kiểm tra dấu hiệu THU NHẬP (Income)
+  const isIncomeReceiving =
+    // Được cộng / chuyển / nhận / nạp
+    /(?:được\s+(?:cộng|chuyển|cho|tặng|biếu|lì\s*xì|thưởng|trả|gửi|hoàn|thối|bắn|nạp|chu\s*cấp))/i.test(text) ||
+    // Nhặt được / lượm được / trúng số
+    /(?:nhặt|lượm|lụm)\s+được/i.test(text) ||
+    /trúng\s*(?:số|thưởng|giải|vé\s*số|minigame|độc\s*đắc)/i.test(text) ||
+    // Ai đó cho tôi / cho mình / cho em
+    /(?:cho\s+(?:tôi|tao|mình|em|anh|chị|con|cháu))/i.test(text) ||
+    // Bố mẹ / anh chị / gia đình cho tiền
+    /(?:ba|bố|mẹ|má|ông|bà|anh|chị|gia đình|bạn|người yêu)\s+cho\b/i.test(text) ||
+    // Lương / làm thêm / trợ cấp / học bổng
+    /(?:lương|thưởng|trợ\s*cấp|học\s*bổng|tiền\s*công|thù\s*lao|hoa\s*hồng|tiền\s*tip)/i.test(text) ||
+    // Gia đình gửi tiền lên
+    /(?:gia\s*đình|ba\s*mẹ|bố\s*mẹ|tiền\s*quê|tiền\s*nhà)\s*gửi/i.test(text) ||
+    // Thu về / bán được / thanh lý / bạn trả nợ / hoàn tiền
+    /(?:bán\s*(?:được|sách|đồ|quần|áo|xe|ve\s*chai)|thanh\s*lý|thu\s*(?:về|được)|trả\s*nợ\s*(?:cho\s*(?:tôi|mình|em))?|bạn\s+trả\s*nợ|hoàn\s*tiền|cashback)/i.test(text) ||
+    // Nhận được tiền / chuyển khoản nhận
+    /(?:nhận\s*(?:được|tiền|lương|thưởng)|chuyển\s*khoản\s*nhận|ting\s*ting)/i.test(text) ||
+    // Kiếm được tiền từ grab, việc làm
+    /(?:kiếm\s*được|chạy\s*(?:grab|be|ship)\s*được)/i.test(text);
+
+  if (!isOutgoingGiving && isIncomeReceiving) {
     type = "income";
-    if (/(học bổng)/i.test(text)) category = "scholarship";
-    else if (/(trợ cấp|ba mẹ|bố mẹ|gia đình)/i.test(text)) category = "allowance";
-    else if (/(lương|làm thêm|parttime|part-time|tiền công)/i.test(text)) category = "parttime";
-    else category = "other_income";
+    if (/(học\s*bổng|thành\s*tích\s*học)/i.test(text)) {
+      category = "scholarship";
+    } else if (/(trợ\s*cấp|ba\s*mẹ|bố\s*mẹ|gia\s*đình|tiền\s*nhà|tiền\s*quê|\bmẹ\b|\bba\b|\bbố\b|\bmá\b|ông\s*bà|chu\s*cấp)/i.test(text)) {
+      category = "allowance";
+    } else if (/(lương|làm\s*thêm|parttime|part-time|tiền\s*công|thù\s*lao|hoa\s*hồng|tiền\s*tip|chạy\s*(?:grab|be|ship)|gia\s*sư|dạy)/i.test(text)) {
+      category = "parttime";
+    } else {
+      // Bạn cho, nhặt được, được cộng, được cho, lì xì, trúng thưởng, trả nợ, thanh lý...
+      category = "other_income";
+    }
   } else {
     // Nhận diện Chi tiêu
     if (/(ăn|uống|cơm|bún|phở|bánh|sáng|trưa|tối|cafe|cà phê|trà sữa|lẩu|nướng|nước|bánh mì)/i.test(text)) {

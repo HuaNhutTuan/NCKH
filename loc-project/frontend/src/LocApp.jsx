@@ -9,7 +9,7 @@ import {
   Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse,
   MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
   Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
-  ShieldCheck, ShieldAlert, Settings, Calendar, Info,
+  ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
@@ -894,6 +894,8 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
   const [filterType, setFilterType] = useState("all"); // "all" | "expense" | "income"
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCat, setSelectedCat] = useState("all"); // category id or "all"
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // Chuyển kỳ thời gian trước / sau
   function handlePrev() {
@@ -962,14 +964,25 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
     return { income, expense, balance: income - expense };
   }, [periodTransactions]);
 
-  // Danh sách sau khi lọc thêm loại giao dịch
+  // Danh sách sau khi lọc thêm loại giao dịch, danh mục và từ khóa
   const filtered = useMemo(() => {
     let list = [...periodTransactions];
     if (filterType !== "all") {
       list = list.filter((t) => t.type === filterType);
     }
+    if (selectedCat !== "all") {
+      list = list.filter((t) => t.cat === selectedCat);
+    }
+    if (searchKeyword.trim()) {
+      const kw = searchKeyword.trim().toLowerCase();
+      list = list.filter((t) =>
+        (t.note || "").toLowerCase().includes(kw) ||
+        String(t.amount).includes(kw) ||
+        (t.date || "").includes(kw)
+      );
+    }
     return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.id || 0) - (a.id || 0)));
-  }, [periodTransactions, filterType]);
+  }, [periodTransactions, filterType, selectedCat, searchKeyword]);
 
   // Phân trang
   const totalItems = filtered.length;
@@ -1201,6 +1214,105 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
         </div>
       </div>
 
+      {/* ── Tìm kiếm & Lọc theo danh mục ── */}
+      {/* Ô tìm kiếm từ khóa */}
+      <div style={{ position: "relative", marginBottom: 10 }}>
+        <Search size={14} color={T.inkSoft} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+        <input
+          type="text"
+          placeholder="Tìm theo ghi chú, số tiền, ngày..."
+          value={searchKeyword}
+          onChange={(e) => { setSearchKeyword(e.target.value); setCurrentPage(1); }}
+          style={{
+            width: "100%",
+            padding: "8px 32px 8px 30px",
+            borderRadius: 10,
+            border: `1px solid ${searchKeyword ? T.teal : T.border}`,
+            fontSize: 12.5,
+            background: T.card,
+            color: T.ink,
+            outline: "none",
+            boxSizing: "border-box",
+            transition: "border-color 0.15s",
+          }}
+        />
+        {searchKeyword && (
+          <button
+            onClick={() => { setSearchKeyword(""); setCurrentPage(1); }}
+            style={{
+              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer", color: T.inkSoft,
+              display: "flex", alignItems: "center", padding: 2,
+            }}
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Lưới danh mục */}
+      {(() => {
+        const displayCats = filterType === "income" ? [
+          { id: "scholarship", label: "Học bổng",   color: "#1F6F63", Icon: GraduationCap },
+          { id: "allowance",   label: "Trợ cấp",    color: "#D9A441", Icon: Wallet },
+          { id: "parttime",    label: "Làm thêm",   color: "#4C8C63", Icon: Coins },
+          { id: "other_income",label: "Khác",       color: "#8A8778", Icon: MoreHorizontal },
+        ] : EXPENSE_CATS;
+        return (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+              {displayCats.map((c) => {
+                const active = selectedCat === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setSelectedCat(active ? "all" : c.id); setCurrentPage(1); }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "9px 4px 8px",
+                      borderRadius: 12,
+                      cursor: "pointer",
+                      border: active ? `2px solid ${c.color}` : `1.5px solid ${T.border}`,
+                      background: active ? c.color + "18" : T.card,
+                      transition: "all 0.15s ease",
+                      boxShadow: active ? `0 0 0 1px ${c.color}44` : "none",
+                    }}
+                  >
+                    <c.Icon size={18} color={active ? c.color : T.inkSoft} strokeWidth={active ? 2.2 : 1.8} />
+                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? c.color : T.inkSoft, textAlign: "center", lineHeight: 1.2 }}>
+                      {c.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {(selectedCat !== "all" || searchKeyword) && (
+              <button
+                onClick={() => { setSelectedCat("all"); setSearchKeyword(""); setCurrentPage(1); }}
+                style={{
+                  marginTop: 7,
+                  background: "none",
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 20,
+                  padding: "3px 12px",
+                  fontSize: 11,
+                  color: T.inkSoft,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <X size={10} /> Bỏ lọc danh mục
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Bộ lọc loại giao dịch (Tất cả / Chi / Thu) & Tùy chọn số lượng mỗi trang */}
       <div
         style={{
@@ -1224,6 +1336,7 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
                 key={f.id}
                 onClick={() => {
                   setFilterType(f.id);
+                  setSelectedCat("all"); // reset cat filter on type switch
                   setCurrentPage(1);
                 }}
                 style={{
@@ -1273,7 +1386,23 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
         {totalItems === 0 ? (
           <div style={{ padding: 24, textAlign: "center" }}>
-            <EmptyNote text="Không có giao dịch nào trong khoảng thời gian này." />
+            {(selectedCat !== "all" || searchKeyword || filterType !== "all") ? (
+              <div>
+                <EmptyNote text="Không tìm thấy giao dịch phù hợp với bộ lọc đang chọn." />
+                <button
+                  onClick={() => { setSelectedCat("all"); setSearchKeyword(""); setFilterType("all"); setCurrentPage(1); }}
+                  style={{
+                    marginTop: 8, background: T.teal, color: "#fff", border: "none",
+                    borderRadius: 8, padding: "5px 14px", fontSize: 11.5, fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Đặt lại bộ lọc
+                </button>
+              </div>
+            ) : (
+              <EmptyNote text="Không có giao dịch nào trong khoảng thời gian này." />
+            )}
           </div>
         ) : (
           paginatedTransactions.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} />)
