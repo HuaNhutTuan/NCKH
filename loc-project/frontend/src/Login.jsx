@@ -127,7 +127,7 @@ export default function Login() {
           {mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
         </div>
         <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, marginBottom: 18 }}>
-          Tuấn — Ví sinh viên
+          NCKH — Ví sinh viên
         </div>
 
         {mode === "register" && (

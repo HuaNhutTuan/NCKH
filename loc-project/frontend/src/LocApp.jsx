@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -9,10 +9,14 @@ import {
   Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse,
   MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
   Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
-  ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search,
+  ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
+import Toast from "./components/ui/Toast";
+import ConfirmModal from "./components/ui/ConfirmModal";
+import OnboardingModal from "./components/onboarding/OnboardingModal";
+import EditTxModal from "./components/modals/EditTxModal";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -152,6 +156,10 @@ export default function LocApp() {
   const [showAdd, setShowAdd] = useState(false);
   const [initialAddTab, setInitialAddTab] = useState("manual");
   const [form, setForm] = useState({ type: "expense", cat: "food", amount: "", note: "", date: todayStr() });
+  const [editingTx, setEditingTx] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", confirmText: "Đồng ý", onConfirm: null, isDanger: false });
 
   // Tải giao dịch + ngân sách + cài đặt Safe-to-Spend của tài khoản đang đăng nhập
   useEffect(() => {
@@ -160,21 +168,25 @@ export default function LocApp() {
     Promise.all([transactionsApi.list(token), budgetsApi.list(token), settingsApi.get(token)])
       .then(([txData, budgetData, settingsData]) => {
         if (cancelled) return;
-        setTransactions(
-          txData.transactions.map((t) => {
-            let cleanDate = t.date;
-            if (typeof cleanDate === "string" && cleanDate.includes("T")) {
-              const d = new Date(cleanDate);
-              if (!isNaN(d.getTime())) {
-                cleanDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d);
-              }
+        const loadedTxs = txData.transactions.map((t) => {
+          let cleanDate = t.date;
+          if (typeof cleanDate === "string" && cleanDate.includes("T")) {
+            const d = new Date(cleanDate);
+            if (!isNaN(d.getTime())) {
+              cleanDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d);
             }
-            return { ...t, cat: t.category, amount: Number(t.amount), date: cleanDate };
-          })
-        );
+          }
+          return { ...t, cat: t.category, amount: Number(t.amount), date: cleanDate };
+        });
+        setTransactions(loadedTxs);
         setBudgets(budgetData.budgets);
         if (settingsData?.settings) {
           setUserSettings(settingsData.settings);
+        }
+
+        // Tự động mở Onboarding nếu người dùng mới chưa có giao dịch nào
+        if (loadedTxs.length === 0 && (!settingsData?.settings || (Number(settingsData.settings.emergency_reserve) === 0 && settingsData.settings.payday_day === 1))) {
+          setShowOnboarding(true);
         }
       })
       .catch((err) => console.error("Không thể tải dữ liệu:", err.message))
@@ -185,7 +197,7 @@ export default function LocApp() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "Chào bạn, mình là Tuấn — trợ lý tài chính dành cho sinh viên. Mình có thể giúp bạn lập ngân sách, hiểu các khái niệm tài chính, hoặc nhận xét về chi tiêu tháng này. Bạn muốn bắt đầu từ đâu?",
+      text: "Chào bạn, mình là Tuấn — trợ lý tài chính đồng hành cùng sinh viên NCKH. Mình có thể giúp bạn phân tích chi tiêu, gợi ý tiết kiệm hoặc giải đáp các khái niệm tài chính. Bạn muốn bắt đầu từ đâu?",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -224,15 +236,22 @@ export default function LocApp() {
     const currentYear = todayObj.getFullYear();
     const currentMonth = todayObj.getMonth();
 
-    const payday = userSettings?.payday_day || 1;
+    const payday = Math.min(31, Math.max(1, userSettings?.payday_day || 1));
     const emergencyReserve = Number(userSettings?.emergency_reserve) || 0;
 
-    // Tính ngày nhận trợ cấp / lương tiếp theo
+    // Helper: Tính số ngày tối đa trong tháng (xử lý chuẩn tháng 2 và tháng 30 ngày)
+    const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+
     let nextPayday;
-    if (currentDay < payday) {
-      nextPayday = new Date(currentYear, currentMonth, payday);
+    const daysInCurrentMonth = getDaysInMonth(currentYear, currentMonth);
+    const clampedPaydayCurrent = Math.min(payday, daysInCurrentMonth);
+
+    if (currentDay < clampedPaydayCurrent) {
+      nextPayday = new Date(currentYear, currentMonth, clampedPaydayCurrent);
     } else {
-      nextPayday = new Date(currentYear, currentMonth + 1, payday);
+      const daysInNextMonth = getDaysInMonth(currentYear, currentMonth + 1);
+      const clampedPaydayNext = Math.min(payday, daysInNextMonth);
+      nextPayday = new Date(currentYear, currentMonth + 1, clampedPaydayNext);
     }
 
     const startOfToday = new Date(currentYear, currentMonth, currentDay);
@@ -276,8 +295,30 @@ export default function LocApp() {
       const res = await settingsApi.update(token, newSettings);
       setUserSettings(res.settings);
       setShowSettings(false);
+      setToast({ message: "Đã lưu cài đặt hạn mức Safe-to-Spend!", type: "success" });
     } catch (err) {
-      alert("Không thể lưu cài đặt: " + err.message);
+      setToast({ message: "Không thể lưu cài đặt: " + err.message, type: "error" });
+    }
+  }
+
+  async function handleOnboardingComplete({ initialBalance, payday_day, emergency_reserve }) {
+    setShowOnboarding(false);
+    try {
+      await settingsApi.update(token, { payday_day, emergency_reserve });
+      setUserSettings({ payday_day, emergency_reserve });
+      if (initialBalance > 0) {
+        const { transaction } = await transactionsApi.create(token, {
+          type: "income",
+          category: "allowance",
+          amount: initialBalance,
+          note: "Số dư ví ban đầu",
+          date: todayStr(),
+        });
+        setTransactions([{ ...transaction, cat: transaction.category, amount: Number(transaction.amount) }]);
+      }
+      setToast({ message: "Thiết lập thành công! Hãy theo dõi hạn mức mỗi ngày.", type: "success" });
+    } catch (err) {
+      setToast({ message: "Lỗi lưu thiết lập: " + err.message, type: "error" });
     }
   }
 
@@ -293,11 +334,32 @@ export default function LocApp() {
     };
     try {
       const { transaction } = await transactionsApi.create(token, payload);
-      setTransactions((prev) => [{ ...transaction, cat: transaction.category }, ...prev]);
+      setTransactions((prev) => [{ ...transaction, cat: transaction.category, amount: Number(transaction.amount) }, ...prev]);
       setForm({ type: "expense", cat: "food", amount: "", note: "", date: todayStr() });
       setShowAdd(false);
+      setToast({ message: `Đã lưu giao dịch: ${fmtVND(amt)}!`, type: "success" });
     } catch (err) {
-      alert(err.message);
+      setToast({ message: err.message, type: "error" });
+    }
+  }
+
+  async function editTransaction(updatedTx) {
+    try {
+      const res = await transactionsApi.update(token, updatedTx.id, {
+        type: updatedTx.type,
+        category: updatedTx.category || updatedTx.cat,
+        amount: updatedTx.amount,
+        note: updatedTx.note,
+        date: updatedTx.date,
+      });
+      const saved = res.transaction;
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === saved.id ? { ...saved, cat: saved.category, amount: Number(saved.amount) } : t))
+      );
+      setToast({ message: "Đã cập nhật giao dịch thành công!", type: "success" });
+    } catch (err) {
+      setToast({ message: "Lỗi cập nhật: " + err.message, type: "error" });
+      throw err;
     }
   }
 
@@ -314,7 +376,7 @@ export default function LocApp() {
           date: tx.date,
         };
         const { transaction } = await transactionsApi.create(token, payload);
-        results.push({ ...transaction, cat: transaction.category });
+        results.push({ ...transaction, cat: transaction.category, amount: Number(transaction.amount) });
       } catch (err) {
         console.error("Lỗi lưu giao dịch:", err.message);
       }
@@ -322,15 +384,53 @@ export default function LocApp() {
     if (results.length > 0) {
       setTransactions((prev) => [...results.reverse(), ...prev]);
       setShowAdd(false);
+      setToast({
+        message: `Đã ghi nhận ${results.length} giao dịch!`,
+        type: "success",
+        undoLabel: "Hoàn tác",
+        duration: 6000,
+        onUndo: async () => {
+          for (const item of results) {
+            try {
+              await transactionsApi.remove(token, item.id);
+            } catch (e) {}
+          }
+          setTransactions((prev) => prev.filter((t) => !results.some((r) => r.id === t.id)));
+          setToast({ message: "Đã hoàn tác các giao dịch vừa tạo.", type: "info" });
+        },
+      });
     }
   }
 
   async function deleteTx(id) {
+    const txToDelete = transactions.find((t) => t.id === id);
+    if (!txToDelete) return;
     try {
       await transactionsApi.remove(token, id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
+      setToast({
+        message: `Đã xóa "${txToDelete.note || catMeta(txToDelete.cat).label}" (${fmtVND(txToDelete.amount)})`,
+        type: "info",
+        undoLabel: "Hoàn tác",
+        duration: 6000,
+        onUndo: async () => {
+          try {
+            const { transaction } = await transactionsApi.create(token, {
+              type: txToDelete.type,
+              category: txToDelete.cat || txToDelete.category,
+              amount: txToDelete.amount,
+              note: txToDelete.note,
+              date: txToDelete.date,
+            });
+            setTransactions((prev) => [{ ...transaction, cat: transaction.category, amount: Number(transaction.amount) }, ...prev]);
+            setToast({ message: "Đã khôi phục giao dịch!", type: "success" });
+          } catch (e) {
+            setToast({ message: "Không thể khôi phục: " + e.message, type: "error" });
+          }
+        },
+      });
     } catch (err) {
-      alert(err.message);
+      setToast({ message: "Không thể xoá giao dịch: " + err.message, type: "error" });
     }
   }
 
@@ -338,8 +438,9 @@ export default function LocApp() {
     try {
       await budgetsApi.update(token, category, limit);
       setBudgets((prev) => ({ ...prev, [category]: limit }));
+      setToast({ message: "Đã cập nhật ngân sách danh mục!", type: "success" });
     } catch (err) {
-      alert(err.message);
+      setToast({ message: err.message, type: "error" });
     }
   }
 
@@ -404,12 +505,14 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
     }
   }
 
-  const NAV = [
-    { id: "home", label: "Tổng quan", Icon: Wallet },
-    { id: "transactions", label: "Giao dịch", Icon: TrendingUp },
+  // NAV chỉ có 4 tab (đã bỏ "Học"), FAB nổi ở giữa
+  const NAV_LEFT = [
+    { id: "home", label: "Trang chủ", Icon: Wallet },
+    { id: "transactions", label: "Lịch sử", Icon: TrendingUp },
+  ];
+  const NAV_RIGHT = [
     { id: "budget", label: "Ngân sách", Icon: PiggyBank },
-    { id: "learn", label: "Học", Icon: BookOpen },
-    { id: "chat", label: "Trợ lý AI", Icon: MessageCircle },
+    { id: "chat", label: "Trợ lý Tuấn", Icon: MessageCircle },
   ];
 
   return (
@@ -424,6 +527,9 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
         .ledger-row:last-child { border-bottom: none; }
         .send-btn:disabled { opacity: .45; cursor: default; }
         input, select, textarea { font-family: inherit; }
+        .fab-btn { transition: transform 0.15s, box-shadow 0.15s; }
+        .fab-btn:active { transform: scale(0.93); }
+        .fab-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(217,164,65,0.55) !important; }
       `}</style>
 
       <div
@@ -435,17 +541,19 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${T.paperLine} 28px)`,
         }}
       >
-        {/* Header */}
-        <div style={{ padding: "18px 20px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper }}>
+        {/* Header — NCKH branding */}
+        <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper }}>
           <div>
-            <div style={{ fontSize: 12, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.2 }}>Xin chào, {user?.name || "bạn"}</div>
-            <div style={{ fontSize: 21, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark }}>Tuấn — Ví sinh viên</div>
+            <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3 }}>Xin chào, {user?.name || "bạn"} 👋</div>
+            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, lineHeight: 1.2 }}>
+              NCKH — Ví sinh viên
+            </div>
           </div>
           <button
             onClick={logout}
             title="Đăng xuất"
             className="btn-logout"
-            style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(217,164,65,0.35)" }}
           >
             <LogOut size={16} color="#fff" />
           </button>
@@ -466,10 +574,17 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
               transactions={transactions}
               safeToSpend={safeToSpend}
               onOpenSettings={() => setShowSettings(true)}
+              onEditTx={(tx) => setEditingTx(tx)}
+              onDeleteTx={deleteTx}
             />
           )}
           {!dataLoading && tab === "transactions" && (
-            <TransactionsTab transactions={transactions} onDelete={deleteTx} onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }} />
+            <TransactionsTab
+              transactions={transactions}
+              onDelete={deleteTx}
+              onEdit={(tx) => setEditingTx(tx)}
+              onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+            />
           )}
           {!dataLoading && tab === "budget" && (
             <BudgetTab
@@ -481,7 +596,6 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
               safeToSpend={safeToSpend}
             />
           )}
-          {!dataLoading && tab === "learn" && <LearnTab onAsk={(q) => { setTab("chat"); sendChat(q); }} />}
           {!dataLoading && tab === "chat" && (
             <ChatTab
               messages={messages}
@@ -496,31 +610,71 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           )}
         </div>
 
-        {/* Bottom nav */}
+        {/* Bottom nav — 4 tab + FAB nổi ở giữa */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0, background: T.card,
-          borderTop: `1px solid ${T.border}`, display: "flex", padding: "8px 4px",
+          borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center",
+          padding: "6px 4px 8px", zIndex: 10,
         }}>
-          {NAV.map(({ id, label, Icon }) => {
+          {/* 2 tab trái */}
+          {NAV_LEFT.map(({ id, label, Icon }) => {
             const active = tab === id;
             return (
               <button
                 key={id}
-                className={`tab-btn ${active ? "active" : ""}`}
                 onClick={() => setTab(id)}
                 style={{
                   flex: 1, background: "none", border: "none", cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "6px 2px", color: active ? T.teal : T.inkSoft,
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  padding: "4px 2px", color: active ? T.teal : T.inkSoft,
                 }}
               >
                 <Icon size={19} strokeWidth={active ? 2.4 : 2} />
-                <span style={{ fontSize: 10.5, fontWeight: active ? 600 : 500 }}>{label}</span>
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{label}</span>
+              </button>
+            );
+          })}
+
+          {/* Nút FAB nổi [ + ] ở chính giữa */}
+          <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
+            <button
+              className="fab-btn"
+              onClick={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+              title="Thêm giao dịch"
+              style={{
+                width: 52, height: 52, borderRadius: "50%",
+                background: `linear-gradient(135deg, ${T.gold}, #C8922A)`,
+                border: "3px solid " + T.card,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 16px rgba(217,164,65,0.5)",
+                position: "absolute", top: -18,
+              }}
+            >
+              <Plus size={24} color="#3A2A08" strokeWidth={2.8} />
+            </button>
+          </div>
+
+          {/* 2 tab phải */}
+          {NAV_RIGHT.map(({ id, label, Icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                style={{
+                  flex: 1, background: "none", border: "none", cursor: "pointer",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  padding: "4px 2px", color: active ? T.teal : T.inkSoft,
+                }}
+              >
+                <Icon size={19} strokeWidth={active ? 2.4 : 2} />
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 500 }}>{label}</span>
               </button>
             );
           })}
         </div>
 
+        {/* Modal: Thêm giao dịch */}
         {showAdd && (
           <AddTxModal
             form={form}
@@ -534,6 +688,17 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           />
         )}
 
+        {/* Modal: Chỉnh sửa giao dịch */}
+        {editingTx && (
+          <EditTxModal
+            tx={editingTx}
+            onClose={() => setEditingTx(null)}
+            onSave={editTransaction}
+            safeToSpend={safeToSpend}
+          />
+        )}
+
+        {/* Modal: Cài đặt Safe-to-Spend */}
         {showSettings && (
           <SafeToSpendSettingsModal
             userSettings={userSettings}
@@ -542,13 +707,39 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
             safeToSpend={safeToSpend}
           />
         )}
+
+        {/* Onboarding wizard */}
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onComplete={handleOnboardingComplete}
+        />
+
+        {/* ConfirmModal (dùng thay thế window.confirm) */}
+        <ConfirmModal
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText={confirmModal.confirmText}
+          isDanger={confirmModal.isDanger}
+          onConfirm={() => {
+            confirmModal.onConfirm?.();
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+          }}
+          onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        />
+
+        {/* Toast notification với Undo */}
+        <Toast toast={toast} onClose={() => setToast(null)} />
+
       </div>
     </div>
   );
 }
 
+
 // ---------------- Home ----------------
-function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings }) {
+function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx }) {
   const recent = transactions.slice(0, 4);
 
   // ---------- Period filter for pie chart ----------
@@ -806,7 +997,7 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
       <div style={{ marginTop: 22, marginBottom: 8 }}>
         <SectionTitle label="Giao dịch gần đây" />
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden" }}>
-          {recent.map((t) => <TxRow key={t.id} t={t} />)}
+          {recent.map((t) => <TxRow key={t.id} t={t} onEdit={onEditTx} onDelete={onDeleteTx} />)}
         </div>
       </div>
     </div>
@@ -821,8 +1012,7 @@ function EmptyNote({ text }) {
   return <div style={{ fontSize: 12.5, color: T.inkSoft, fontStyle: "italic", padding: "8px 0" }}>{text}</div>;
 }
 
-function TxRow({ t, onDelete }) {
-  const [confirmDel, setConfirmDel] = useState(false);
+function TxRow({ t, onDelete, onEdit }) {
   const meta = catMeta(t.cat);
   const noteText = (t.note || "").trim() || meta.label;
   return (
@@ -845,32 +1035,25 @@ function TxRow({ t, onDelete }) {
       <div style={{ fontSize: 13, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, flexShrink: 0, marginLeft: 4 }}>
         {t.type === "income" ? "+" : "-"}{fmtVND(t.amount)}
       </div>
+      {/* Nút Sửa */}
+      {onEdit && (
+        <button
+          onClick={() => onEdit(t)}
+          title="Sửa giao dịch"
+          style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4, borderRadius: 6, flexShrink: 0, marginLeft: 2 }}
+        >
+          <Pencil size={13} />
+        </button>
+      )}
+      {/* Nút Xóa */}
       {onDelete && (
-        confirmDel ? (
-          <div style={{ display: "flex", gap: 3, flexShrink: 0, marginLeft: 4 }}>
-            <button
-              onClick={() => onDelete(t.id)}
-              style={{ background: T.brick, color: "#fff", border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 10.5, fontWeight: 700, cursor: "pointer" }}
-            >
-              Xóa
-            </button>
-            <button
-              onClick={() => setConfirmDel(false)}
-              style={{ background: T.paperLine, color: T.inkSoft, border: "none", borderRadius: 6, padding: "3px 7px", fontSize: 10.5, cursor: "pointer" }}
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmDel(true)}
-            className="btn-delete"
-            title="Xóa giao dịch"
-            style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4, borderRadius: 6, flexShrink: 0, marginLeft: 2 }}
-          >
-            <Trash2 size={13} />
-          </button>
-        )
+        <button
+          onClick={() => onDelete(t.id)}
+          title="Xóa giao dịch"
+          style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4, borderRadius: 6, flexShrink: 0, marginLeft: 0 }}
+        >
+          <Trash2 size={13} />
+        </button>
       )}
     </div>
   );
@@ -917,7 +1100,7 @@ function isSamePeriod(period, refDate) {
 }
 
 // ---------------- Transactions ----------------
-function TransactionsTab({ transactions, onDelete, onAdd }) {
+function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
   const [period, setPeriod] = useState("month");
   const [refDate, setRefDate] = useState(() => new Date());
   const [filterType, setFilterType] = useState("all");
@@ -1233,7 +1416,7 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
             )}
           </div>
         ) : (
-          paginatedTransactions.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} />)
+          paginatedTransactions.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} onEdit={onEdit} />)
         )}
       </div>
 
@@ -1914,6 +2097,81 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
         />
       )}
 
+      {/* ── Carousel Bí kíp & Mẹo tài chính sinh viên (Hợp nhất từ tab Học cũ) ── */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{
+          background: `linear-gradient(135deg, ${T.card}, #FFFBF0)`,
+          border: `1px solid ${T.border}`,
+          borderRadius: 12, padding: "10px 12px",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <Lightbulb size={14} color={T.gold} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.tealDark, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Mẹo tài chính hôm nay
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, fontStyle: "italic" }}>
+            "{TIP_OF_DAY}"
+          </div>
+        </div>
+
+        {/* Danh sách chủ đề học nhanh — Scroll ngang */}
+        <div style={{
+          display: "flex", gap: 8, overflowX: "auto", padding: "8px 0 4px",
+          scrollbarWidth: "none", msOverflowStyle: "none",
+        }}>
+          {LESSONS.map((l, idx) => (
+            <div
+              key={idx}
+              onClick={() => {
+                const prompt = `Giải thích thêm cho mình về "${l.title}": ${l.desc}`;
+                sendChat(prompt);
+              }}
+              style={{
+                flexShrink: 0, width: 175, background: T.card,
+                border: `1px solid ${T.border}`, borderRadius: 10,
+                padding: "8px 10px", cursor: "pointer",
+                transition: "transform 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.teal; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "none"; }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: T.teal, background: "rgba(31,111,99,0.08)", padding: "1px 5px", borderRadius: 4 }}>
+                  {l.tag}
+                </span>
+                <Sparkles size={11} color={T.gold} />
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, lineHeight: 1.3, marginBottom: 2 }}>
+                {l.title}
+              </div>
+              <div style={{ fontSize: 10, color: T.inkSoft, lineClamp: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {l.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Câu hỏi gợi ý nhanh */}
+        <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "4px 0", scrollbarWidth: "none" }}>
+          {SUGGESTED_PROMPTS.map((prompt, idx) => (
+            <button
+              key={idx}
+              onClick={() => sendChat(prompt)}
+              style={{
+                flexShrink: 0, background: "rgba(31,111,99,0.05)",
+                border: `1px solid rgba(31,111,99,0.2)`, borderRadius: 14,
+                padding: "4px 9px", fontSize: 10.5, color: T.tealDark,
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              💬 {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
         {messages.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
@@ -2254,11 +2512,49 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </button>
                 ))}
               </div>
-              <input
-                type="number" placeholder="Số tiền (VND)" value={form.amount}
-                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, marginBottom: 8, background: T.card, color: T.ink }}
-              />
+              <div>
+                <input
+                  type="number" placeholder="Số tiền (VND)" value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, marginBottom: 4, background: T.card, color: T.ink }}
+                />
+                {/* Format preview */}
+                {Boolean(Number(form.amount)) && (
+                  <div style={{ fontSize: 11, color: T.tealDark, fontWeight: 600, padding: "0 4px 6px" }}>
+                    👉 Bằng chữ: {fmtVND(Number(form.amount))}
+                  </div>
+                )}
+                {/* Quick amount chips */}
+                <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
+                  {[10000, 20000, 50000, 100000, 500000].map((quick) => (
+                    <button
+                      key={quick}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, amount: String((Number(f.amount) || 0) + quick) }))}
+                      style={{
+                        background: "rgba(217,164,65,0.12)", border: `1px solid ${T.border}`,
+                        borderRadius: 6, padding: "3px 7px", fontSize: 10.5, fontWeight: 600,
+                        color: T.ink, cursor: "pointer", whiteSpace: "nowrap",
+                      }}
+                    >
+                      +{quick >= 1000000 ? `${quick / 1000000}tr` : `${quick / 1000}k`}
+                    </button>
+                  ))}
+                  {Boolean(form.amount) && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, amount: "" }))}
+                      style={{
+                        background: "rgba(186,45,37,0.08)", border: `1px solid rgba(186,45,37,0.2)`,
+                        borderRadius: 6, padding: "3px 7px", fontSize: 10.5, fontWeight: 600,
+                        color: T.brick, cursor: "pointer",
+                      }}
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+              </div>
               {form.type === "expense" && safeToSpend && Number(form.amount) > 0 && Number(form.amount) > safeToSpend.remainingToday && (
                 <div style={{
                   background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 10,

@@ -29,6 +29,7 @@ export const authApi = {
 export const transactionsApi = {
   list: (token) => request("/transactions", { token }),
   create: (token, tx) => request("/transactions", { method: "POST", token, body: tx }),
+  update: (token, id, tx) => request(`/transactions/${id}`, { method: "PUT", token, body: tx }),
   remove: (token, id) => request(`/transactions/${id}`, { method: "DELETE", token }),
 };
 
