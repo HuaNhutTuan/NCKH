@@ -636,22 +636,24 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           })}
 
           {/* Nút FAB nổi [ + ] ở chính giữa */}
-          <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
             <button
               className="fab-btn"
               onClick={() => { setInitialAddTab("manual"); setShowAdd(true); }}
               title="Thêm giao dịch"
               style={{
-                width: 52, height: 52, borderRadius: "50%",
+                width: 46, height: 46, borderRadius: "50%",
                 background: `linear-gradient(135deg, ${T.gold}, #C8922A)`,
                 border: "3px solid " + T.card,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 4px 16px rgba(217,164,65,0.5)",
-                position: "absolute", top: -18,
+                boxShadow: "0 4px 14px rgba(217,164,65,0.45)",
+                marginTop: -22,
+                marginBottom: 2,
               }}
             >
               <Plus size={24} color="#3A2A08" strokeWidth={2.8} />
             </button>
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.gold, lineHeight: 1.2 }}>Thêm</span>
           </div>
 
           {/* 2 tab phải */}
