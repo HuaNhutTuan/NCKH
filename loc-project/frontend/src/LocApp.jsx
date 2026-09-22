@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -822,26 +822,55 @@ function EmptyNote({ text }) {
 }
 
 function TxRow({ t, onDelete }) {
+  const [confirmDel, setConfirmDel] = useState(false);
   const meta = catMeta(t.cat);
+  const noteText = (t.note || "").trim() || meta.label;
   return (
-    <div className="ledger-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
-      <IconBadge Icon={meta.Icon} color={meta.color} size={34} />
+    <div
+      className="ledger-row"
+      style={{
+        display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
+        borderBottom: `1px solid ${T.paperLine}`,
+      }}
+    >
+      <IconBadge Icon={meta.Icon} color={meta.color} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.note}</div>
-        <div style={{ fontSize: 11, color: T.inkSoft }}>{meta.label} · {formatDateVN(t.date)}</div>
+        <div style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: T.ink }}>
+          {noteText}
+        </div>
+        <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 1 }}>
+          {meta.label} · {formatDateVN(t.date)}
+        </div>
       </div>
-      <div style={{ fontSize: 13.5, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, flexShrink: 0 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, flexShrink: 0, marginLeft: 4 }}>
         {t.type === "income" ? "+" : "-"}{fmtVND(t.amount)}
       </div>
       {onDelete && (
-        <button
-          onClick={() => onDelete(t.id)}
-          className="btn-delete"
-          title="Xóa giao dịch"
-          style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 5, borderRadius: 6 }}
-        >
-          <Trash2 size={14} />
-        </button>
+        confirmDel ? (
+          <div style={{ display: "flex", gap: 3, flexShrink: 0, marginLeft: 4 }}>
+            <button
+              onClick={() => onDelete(t.id)}
+              style={{ background: T.brick, color: "#fff", border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 10.5, fontWeight: 700, cursor: "pointer" }}
+            >
+              Xóa
+            </button>
+            <button
+              onClick={() => setConfirmDel(false)}
+              style={{ background: T.paperLine, color: T.inkSoft, border: "none", borderRadius: 6, padding: "3px 7px", fontSize: 10.5, cursor: "pointer" }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDel(true)}
+            className="btn-delete"
+            title="Xóa giao dịch"
+            style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4, borderRadius: 6, flexShrink: 0, marginLeft: 2 }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )
       )}
     </div>
   );
@@ -889,15 +918,14 @@ function isSamePeriod(period, refDate) {
 
 // ---------------- Transactions ----------------
 function TransactionsTab({ transactions, onDelete, onAdd }) {
-  const [period, setPeriod] = useState("month"); // "week" | "month" | "year" | "all"
+  const [period, setPeriod] = useState("month");
   const [refDate, setRefDate] = useState(() => new Date());
-  const [filterType, setFilterType] = useState("all"); // "all" | "expense" | "income"
-  const [pageSize, setPageSize] = useState(10);
+  const [filterType, setFilterType] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedCat, setSelectedCat] = useState("all"); // category id or "all"
+  const [selectedCat, setSelectedCat] = useState("all");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const PAGE_SIZE = 20;
 
-  // Chuyển kỳ thời gian trước / sau
   function handlePrev() {
     setCurrentPage(1);
     setRefDate((prev) => {
@@ -925,23 +953,22 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
     setRefDate(new Date());
   }
 
-  // Tiêu đề kỳ hiển thị
+  function resetAllFilters() {
+    setSelectedCat("all");
+    setSearchKeyword("");
+    setFilterType("all");
+    setCurrentPage(1);
+  }
+
   const periodLabel = useMemo(() => {
-    if (period === "week") {
-      return getWeekRange(refDate).label;
-    }
-    if (period === "month") {
-      return `Tháng ${String(refDate.getMonth() + 1).padStart(2, "0")}/${refDate.getFullYear()}`;
-    }
-    if (period === "year") {
-      return `Năm ${refDate.getFullYear()}`;
-    }
-    return "Tất cả thời gian";
+    if (period === "week") return getWeekRange(refDate).label;
+    if (period === "month") return `Th.${refDate.getMonth() + 1}/${refDate.getFullYear()}`;
+    if (period === "year") return `${refDate.getFullYear()}`;
+    return "Tất cả";
   }, [period, refDate]);
 
   const isCurrent = isSamePeriod(period, refDate);
 
-  // Danh sách đã lọc theo kỳ
   const periodTransactions = useMemo(() => {
     let list = [...transactions];
     if (period === "week") {
@@ -957,22 +984,16 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
     return list;
   }, [transactions, period, refDate]);
 
-  // Thống kê nhanh của kỳ được chọn
   const periodStats = useMemo(() => {
     const income = periodTransactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const expense = periodTransactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     return { income, expense, balance: income - expense };
   }, [periodTransactions]);
 
-  // Danh sách sau khi lọc thêm loại giao dịch, danh mục và từ khóa
   const filtered = useMemo(() => {
     let list = [...periodTransactions];
-    if (filterType !== "all") {
-      list = list.filter((t) => t.type === filterType);
-    }
-    if (selectedCat !== "all") {
-      list = list.filter((t) => t.cat === selectedCat);
-    }
+    if (filterType !== "all") list = list.filter((t) => t.type === filterType);
+    if (selectedCat !== "all") list = list.filter((t) => t.cat === selectedCat);
     if (searchKeyword.trim()) {
       const kw = searchKeyword.trim().toLowerCase();
       list = list.filter((t) =>
@@ -984,370 +1005,163 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
     return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.id || 0) - (a.id || 0)));
   }, [periodTransactions, filterType, selectedCat, searchKeyword]);
 
-  // Phân trang
   const totalItems = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
   const paginatedTransactions = useMemo(() => {
-    const start = (validCurrentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, validCurrentPage, pageSize]);
+    const start = (validCurrentPage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, validCurrentPage]);
 
-  // Tạo danh sách số trang hiển thị
   const pageNumbers = useMemo(() => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
     const pages = [];
-    if (validCurrentPage <= 3) {
-      pages.push(1, 2, 3, 4, "...", totalPages);
-    } else if (validCurrentPage >= totalPages - 2) {
-      pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-    } else {
-      pages.push(1, "...", validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, "...", totalPages);
-    }
+    if (validCurrentPage <= 3) pages.push(1, 2, 3, 4, "...", totalPages);
+    else if (validCurrentPage >= totalPages - 2) pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    else pages.push(1, "...", validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, "...", totalPages);
     return pages;
   }, [totalPages, validCurrentPage]);
 
+  const displayCats = filterType === "income" ? [
+    { id: "scholarship", label: "Học bổng", color: "#1F6F63", Icon: GraduationCap },
+    { id: "allowance",   label: "Trợ cấp",   color: "#D9A441", Icon: Wallet },
+    { id: "parttime",    label: "Làm thêm",  color: "#4C8C63", Icon: Coins },
+    { id: "other_income",label: "Khác",      color: "#8A8778", Icon: MoreHorizontal },
+  ] : EXPENSE_CATS;
+
+  const hasActiveFilter = selectedCat !== "all" || searchKeyword || filterType !== "all";
+
+  // btn style helpers
+  const navBtnStyle = {
+    background: "transparent", border: `1px solid ${T.border}`, borderRadius: 6,
+    color: T.ink, cursor: "pointer", padding: "3px 6px",
+    display: "flex", alignItems: "center",
+  };
+
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 14 }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
-            Lịch sử giao dịch
-          </div>
-          <div style={{ fontSize: 11.5, color: T.inkSoft, marginTop: 2 }}>
-            Quản lý và tra cứu chi tiêu theo kỳ thời gian
-          </div>
+    <div style={{ paddingBottom: 8 }}>
+
+      {/* ── Row 1: Header ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 10 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
+          Lịch sử giao dịch
         </div>
         <button
           onClick={onAdd}
           className="btn-teal"
           style={{
-            background: T.teal,
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "7px 12px",
-            fontSize: 12.5,
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
+            background: T.teal, color: "#fff", border: "none", borderRadius: 8,
+            padding: "6px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 4,
             boxShadow: "0 2px 6px rgba(31,111,99,0.2)",
           }}
         >
-          <Plus size={15} /> Thêm giao dịch
+          <Plus size={14} /> Thêm
         </button>
       </div>
 
-      {/* Tabs chọn chu kỳ: Tuần / Tháng / Năm / Tất cả */}
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          background: T.paperLine,
-          padding: 4,
-          borderRadius: 10,
-          marginBottom: 12,
-        }}
-      >
-        {[
-          { id: "week", label: "Theo tuần" },
-          { id: "month", label: "Theo tháng" },
-          { id: "year", label: "Theo năm" },
-          { id: "all", label: "Tất cả" },
-        ].map((tab) => {
-          const active = period === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setPeriod(tab.id);
-                setCurrentPage(1);
-              }}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                fontSize: 12,
-                fontWeight: active ? 700 : 500,
-                color: active ? "#fff" : T.inkSoft,
-                background: active ? T.teal : "transparent",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* ── Row 2: Period tabs + navigation (1 dòng) ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 3, background: T.paperLine, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+          {[
+            { id: "week", label: "Tuần" },
+            { id: "month", label: "Tháng" },
+            { id: "year", label: "Năm" },
+            { id: "all", label: "Tất cả" },
+          ].map((tab) => {
+            const active = period === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setPeriod(tab.id); setCurrentPage(1); }}
+                style={{
+                  padding: "4px 8px", fontSize: 11, fontWeight: active ? 700 : 500,
+                  color: active ? "#fff" : T.inkSoft,
+                  background: active ? T.teal : "transparent",
+                  border: "none", borderRadius: 6, cursor: "pointer",
+                  transition: "all 0.12s ease",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Điều hướng kỳ (Trước / Hiện tại / Sau) - Chỉ hiện khi không phải 'all' */}
-      {period !== "all" && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: T.card,
-            border: `1px solid ${T.border}`,
-            borderRadius: 10,
-            padding: "8px 12px",
-            marginBottom: 12,
-          }}
-        >
-          <button
-            onClick={handlePrev}
-            title="Kỳ trước"
-            style={{
-              background: "transparent",
-              border: `1px solid ${T.border}`,
-              borderRadius: 6,
-              color: T.ink,
-              cursor: "pointer",
-              padding: "4px 8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "center" }}>
-            <Calendar size={15} color={T.teal} />
-            <span style={{ fontSize: 13.5, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
+        {period !== "all" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-end" }}>
+            <button onClick={handlePrev} style={navBtnStyle}><ChevronLeft size={14} /></button>
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
               {periodLabel}
             </span>
             {!isCurrent ? (
-              <button
-                onClick={handleResetCurrent}
-                style={{
-                  background: T.paperLine,
-                  border: "none",
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: T.tealDark,
-                  padding: "2px 6px",
-                  cursor: "pointer",
-                }}
-              >
-                Về hiện tại
+              <button onClick={handleResetCurrent} style={{ background: T.paperLine, border: "none", borderRadius: 4, fontSize: 9.5, fontWeight: 600, color: T.tealDark, padding: "2px 5px", cursor: "pointer" }}>
+                Hiện tại
               </button>
             ) : (
-              <span
-                style={{
-                  background: T.teal + "20",
-                  color: T.tealDark,
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: "2px 6px",
-                }}
-              >
+              <span style={{ background: T.teal + "20", color: T.tealDark, borderRadius: 4, fontSize: 9.5, fontWeight: 600, padding: "2px 5px" }}>
                 {period === "week" ? "Tuần này" : period === "month" ? "Tháng này" : "Năm nay"}
               </span>
             )}
+            <button onClick={handleNext} style={navBtnStyle}><ChevronRight size={14} /></button>
           </div>
-
-          <button
-            onClick={handleNext}
-            title="Kỳ sau"
-            style={{
-              background: "transparent",
-              border: `1px solid ${T.border}`,
-              borderRadius: 6,
-              color: T.ink,
-              cursor: "pointer",
-              padding: "4px 8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* Thẻ tóm tắt Thu / Chi / Chênh lệch của kỳ */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 8,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
-          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Tổng thu</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.teal, fontFamily: "'Space Grotesk',sans-serif", marginTop: 2 }}>
-            +{fmtVND(periodStats.income)}
-          </div>
-        </div>
-        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
-          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Tổng chi</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.brick, fontFamily: "'Space Grotesk',sans-serif", marginTop: 2 }}>
-            -{fmtVND(periodStats.expense)}
-          </div>
-        </div>
-        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 10px" }}>
-          <div style={{ fontSize: 10.5, color: T.inkSoft }}>Chênh lệch</div>
-          <div
-            style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: periodStats.balance >= 0 ? T.tealDark : T.brick,
-              fontFamily: "'Space Grotesk',sans-serif",
-              marginTop: 2,
-            }}
-          >
-            {periodStats.balance >= 0 ? "+" : ""}{fmtVND(periodStats.balance)}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Tìm kiếm & Lọc theo danh mục ── */}
-      {/* Ô tìm kiếm từ khóa */}
-      <div style={{ position: "relative", marginBottom: 10 }}>
-        <Search size={14} color={T.inkSoft} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-        <input
-          type="text"
-          placeholder="Tìm theo ghi chú, số tiền, ngày..."
-          value={searchKeyword}
-          onChange={(e) => { setSearchKeyword(e.target.value); setCurrentPage(1); }}
-          style={{
-            width: "100%",
-            padding: "8px 32px 8px 30px",
-            borderRadius: 10,
-            border: `1px solid ${searchKeyword ? T.teal : T.border}`,
-            fontSize: 12.5,
-            background: T.card,
-            color: T.ink,
-            outline: "none",
-            boxSizing: "border-box",
-            transition: "border-color 0.15s",
-          }}
-        />
-        {searchKeyword && (
-          <button
-            onClick={() => { setSearchKeyword(""); setCurrentPage(1); }}
-            style={{
-              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-              background: "none", border: "none", cursor: "pointer", color: T.inkSoft,
-              display: "flex", alignItems: "center", padding: 2,
-            }}
-          >
-            <X size={13} />
-          </button>
         )}
       </div>
 
-      {/* Lưới danh mục */}
-      {(() => {
-        const displayCats = filterType === "income" ? [
-          { id: "scholarship", label: "Học bổng",   color: "#1F6F63", Icon: GraduationCap },
-          { id: "allowance",   label: "Trợ cấp",    color: "#D9A441", Icon: Wallet },
-          { id: "parttime",    label: "Làm thêm",   color: "#4C8C63", Icon: Coins },
-          { id: "other_income",label: "Khác",       color: "#8A8778", Icon: MoreHorizontal },
-        ] : EXPENSE_CATS;
-        return (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
-              {displayCats.map((c) => {
-                const active = selectedCat === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => { setSelectedCat(active ? "all" : c.id); setCurrentPage(1); }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 4,
-                      padding: "9px 4px 8px",
-                      borderRadius: 12,
-                      cursor: "pointer",
-                      border: active ? `2px solid ${c.color}` : `1.5px solid ${T.border}`,
-                      background: active ? c.color + "18" : T.card,
-                      transition: "all 0.15s ease",
-                      boxShadow: active ? `0 0 0 1px ${c.color}44` : "none",
-                    }}
-                  >
-                    <c.Icon size={18} color={active ? c.color : T.inkSoft} strokeWidth={active ? 2.2 : 1.8} />
-                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? c.color : T.inkSoft, textAlign: "center", lineHeight: 1.2 }}>
-                      {c.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {(selectedCat !== "all" || searchKeyword) && (
-              <button
-                onClick={() => { setSelectedCat("all"); setSearchKeyword(""); setCurrentPage(1); }}
-                style={{
-                  marginTop: 7,
-                  background: "none",
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 20,
-                  padding: "3px 12px",
-                  fontSize: 11,
-                  color: T.inkSoft,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <X size={10} /> Bỏ lọc danh mục
-              </button>
-            )}
+      {/* ── Row 3: Summary bar (1 dòng compact) ── */}
+      <div style={{ display: "flex", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
+        {[
+          { label: "Tổng thu",  value: `+${fmtVND(periodStats.income)}`,  color: T.teal },
+          { label: "Tổng chi",  value: `-${fmtVND(periodStats.expense)}`, color: T.brick },
+          { label: "Còn lại",   value: `${periodStats.balance >= 0 ? "+" : ""}${fmtVND(periodStats.balance)}`, color: periodStats.balance >= 0 ? T.tealDark : T.brick },
+        ].map((s, i) => (
+          <div key={i} style={{ flex: 1, padding: "6px 8px", borderRight: i < 2 ? `1px solid ${T.border}` : "none", textAlign: "center" }}>
+            <div style={{ fontSize: 9.5, color: T.inkSoft }}>{s.label}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: s.color, fontFamily: "'Space Grotesk',sans-serif", marginTop: 1 }}>{s.value}</div>
           </div>
-        );
-      })()}
+        ))}
+      </div>
 
-      {/* Bộ lọc loại giao dịch (Tất cả / Chi / Thu) & Tùy chọn số lượng mỗi trang */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 10,
-          flexWrap: "wrap",
-          gap: 6,
-        }}
-      >
-        <div style={{ display: "flex", gap: 4 }}>
+      {/* ── Row 4: Search + Type filter (1 dòng) ── */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <Search size={13} color={T.inkSoft} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+          <input
+            type="text"
+            placeholder="Tìm giao dịch..."
+            value={searchKeyword}
+            onChange={(e) => { setSearchKeyword(e.target.value); setCurrentPage(1); }}
+            style={{
+              width: "100%", padding: "6px 26px 6px 26px",
+              borderRadius: 8, border: `1px solid ${searchKeyword ? T.teal : T.border}`,
+              fontSize: 12, background: T.card, color: T.ink, outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {searchKeyword && (
+            <button onClick={() => { setSearchKeyword(""); setCurrentPage(1); }} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.inkSoft, display: "flex", alignItems: "center", padding: 1 }}>
+              <X size={11} />
+            </button>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
           {[
-            { id: "all", label: `Tất cả (${periodTransactions.length})` },
-            { id: "expense", label: `Chi (${periodTransactions.filter((t) => t.type === "expense").length})` },
-            { id: "income", label: `Thu (${periodTransactions.filter((t) => t.type === "income").length})` },
+            { id: "all",     label: "Tất cả" },
+            { id: "expense", label: "Chi" },
+            { id: "income",  label: "Thu" },
           ].map((f) => {
             const active = filterType === f.id;
             return (
               <button
                 key={f.id}
-                onClick={() => {
-                  setFilterType(f.id);
-                  setSelectedCat("all"); // reset cat filter on type switch
-                  setCurrentPage(1);
-                }}
+                onClick={() => { setFilterType(f.id); setSelectedCat("all"); setCurrentPage(1); }}
                 style={{
                   background: active ? T.ink : "transparent",
                   color: active ? "#fff" : T.inkSoft,
                   border: `1px solid ${active ? T.ink : T.border}`,
-                  borderRadius: 20,
-                  padding: "3px 10px",
-                  fontSize: 11,
-                  fontWeight: active ? 600 : 500,
-                  cursor: "pointer",
+                  borderRadius: 16, padding: "4px 9px",
+                  fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer",
                 }}
               >
                 {f.label}
@@ -1355,47 +1169,61 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
             );
           })}
         </div>
-
-        {/* Dropdown chọn số dòng/trang */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.inkSoft }}>
-          <span>Mỗi trang:</span>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            style={{
-              background: T.card,
-              border: `1px solid ${T.border}`,
-              borderRadius: 6,
-              padding: "2px 6px",
-              fontSize: 11,
-              color: T.ink,
-              cursor: "pointer",
-            }}
-          >
-            <option value={5}>5 mục</option>
-            <option value={10}>10 mục</option>
-            <option value={20}>20 mục</option>
-          </select>
-        </div>
       </div>
 
-      {/* Bảng danh sách giao dịch */}
-      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 12 }}>
+      {/* ── Row 5: Category chips (cuộn ngang) ── */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          {displayCats.map((c) => {
+            const active = selectedCat === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => { setSelectedCat(active ? "all" : c.id); setCurrentPage(1); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", borderRadius: 20, flexShrink: 0,
+                  border: active ? `1.5px solid ${c.color}` : `1px solid ${T.border}`,
+                  background: active ? c.color + "15" : T.card,
+                  cursor: "pointer", fontSize: 10.5,
+                  color: active ? c.color : T.inkSoft,
+                  fontWeight: active ? 700 : 500,
+                  transition: "all 0.12s ease",
+                }}
+              >
+                <c.Icon size={12} color={active ? c.color : T.inkSoft} strokeWidth={active ? 2.2 : 1.7} />
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+        {hasActiveFilter && (
+          <button
+            onClick={resetAllFilters}
+            style={{ marginTop: 5, background: "none", border: "none", padding: 0, fontSize: 10.5, color: T.inkSoft, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+          >
+            <X size={9} /> Bỏ tất cả bộ lọc
+          </button>
+        )}
+      </div>
+
+      {/* ── Đếm số giao dịch ── */}
+      {totalItems > 0 && (
+        <div style={{ fontSize: 10.5, color: T.inkSoft, marginBottom: 5 }}>
+          {totalItems} giao dịch{hasActiveFilter ? " phù hợp" : ""}
+        </div>
+      )}
+
+      {/* ── Danh sách giao dịch ── */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 10 }}>
         {totalItems === 0 ? (
-          <div style={{ padding: 24, textAlign: "center" }}>
-            {(selectedCat !== "all" || searchKeyword || filterType !== "all") ? (
+          <div style={{ padding: "20px 16px", textAlign: "center" }}>
+            {hasActiveFilter ? (
               <div>
-                <EmptyNote text="Không tìm thấy giao dịch phù hợp với bộ lọc đang chọn." />
+                <EmptyNote text="Không tìm thấy giao dịch phù hợp với bộ lọc." />
                 <button
-                  onClick={() => { setSelectedCat("all"); setSearchKeyword(""); setFilterType("all"); setCurrentPage(1); }}
-                  style={{
-                    marginTop: 8, background: T.teal, color: "#fff", border: "none",
-                    borderRadius: 8, padding: "5px 14px", fontSize: 11.5, fontWeight: 600,
-                    cursor: "pointer",
-                  }}
+                  onClick={resetAllFilters}
+                  style={{ marginTop: 8, background: T.teal, color: "#fff", border: "none", borderRadius: 8, padding: "5px 14px", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
                 >
                   Đặt lại bộ lọc
                 </button>
@@ -1409,95 +1237,46 @@ function TransactionsTab({ transactions, onDelete, onAdd }) {
         )}
       </div>
 
-      {/* Phân trang (Pagination footer) */}
-      {totalItems > 0 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 8,
-            padding: "8px 4px",
-          }}
-        >
-          <div style={{ fontSize: 11.5, color: T.inkSoft }}>
-            Hiển thị {(validCurrentPage - 1) * pageSize + 1} - {Math.min(validCurrentPage * pageSize, totalItems)} trong tổng số {totalItems} giao dịch
+      {/* ── Phân trang (chỉ hiện khi > PAGE_SIZE) ── */}
+      {totalItems > PAGE_SIZE && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6, padding: "4px 0" }}>
+          <div style={{ fontSize: 10.5, color: T.inkSoft }}>
+            {(validCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(validCurrentPage * PAGE_SIZE, totalItems)} / {totalItems}
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {/* Nút Trước */}
+          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={validCurrentPage <= 1}
-              style={{
-                background: T.card,
-                border: `1px solid ${T.border}`,
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 11.5,
-                color: validCurrentPage <= 1 ? "#bbb" : T.ink,
-                cursor: validCurrentPage <= 1 ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
+              style={{ ...navBtnStyle, padding: "3px 7px", fontSize: 11, color: validCurrentPage <= 1 ? "#bbb" : T.ink, cursor: validCurrentPage <= 1 ? "not-allowed" : "pointer", gap: 2 }}
             >
-              <ChevronLeft size={13} /> Trước
+              <ChevronLeft size={12} /> Trước
             </button>
-
-            {/* Số trang */}
-            {pageNumbers.map((p, idx) => {
-              if (p === "...") {
-                return (
-                  <span key={`dots-${idx}`} style={{ padding: "0 4px", color: T.inkSoft, fontSize: 11 }}>
-                    ...
-                  </span>
-                );
-              }
-              const active = p === validCurrentPage;
-              return (
+            {pageNumbers.map((p, idx) =>
+              p === "..." ? (
+                <span key={`d-${idx}`} style={{ padding: "0 3px", color: T.inkSoft, fontSize: 11 }}>…</span>
+              ) : (
                 <button
                   key={p}
                   onClick={() => setCurrentPage(p)}
                   style={{
-                    minWidth: 26,
-                    height: 26,
-                    borderRadius: 6,
-                    border: active ? "none" : `1px solid ${T.border}`,
-                    background: active ? T.teal : T.card,
-                    color: active ? "#fff" : T.ink,
-                    fontSize: 11.5,
-                    fontWeight: active ? 700 : 500,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    minWidth: 24, height: 24, borderRadius: 5,
+                    border: p === validCurrentPage ? "none" : `1px solid ${T.border}`,
+                    background: p === validCurrentPage ? T.teal : T.card,
+                    color: p === validCurrentPage ? "#fff" : T.ink,
+                    fontSize: 11, fontWeight: p === validCurrentPage ? 700 : 500,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
                   {p}
                 </button>
-              );
-            })}
-
-            {/* Nút Sau */}
+              )
+            )}
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={validCurrentPage >= totalPages}
-              style={{
-                background: T.card,
-                border: `1px solid ${T.border}`,
-                borderRadius: 6,
-                padding: "4px 8px",
-                fontSize: 11.5,
-                color: validCurrentPage >= totalPages ? "#bbb" : T.ink,
-                cursor: validCurrentPage >= totalPages ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
+              style={{ ...navBtnStyle, padding: "3px 7px", fontSize: 11, color: validCurrentPage >= totalPages ? "#bbb" : T.ink, cursor: validCurrentPage >= totalPages ? "not-allowed" : "pointer", gap: 2 }}
             >
-              Sau <ChevronRight size={13} />
+              Sau <ChevronRight size={12} />
             </button>
           </div>
         </div>
