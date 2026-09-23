@@ -60,6 +60,7 @@ export default function Login() {
       justifyContent: "center",
       fontFamily: "'Inter',sans-serif",
       boxSizing: "border-box",
+      padding: "16px",
     }}>
       <form onSubmit={handleSubmit} style={{
         width: "100%",

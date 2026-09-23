@@ -516,7 +516,7 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
   ];
 
   return (
-    <div style={{ fontFamily: "'Space Grotesk','Inter',sans-serif", color: T.ink, minHeight: 640, display: "flex", justifyContent: "center", background: "transparent" }}>
+    <div className="loc-shell-wrapper" style={{ fontFamily: "'Space Grotesk','Inter',sans-serif", color: T.ink, background: "transparent" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
         .loc-shell { font-family: 'Inter', sans-serif; }
@@ -535,16 +535,15 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
       <div
         className="loc-shell"
         style={{
-          width: 420, maxWidth: "100%", minHeight: 640, background: T.paper,
-          borderRadius: 20, overflow: "hidden", display: "flex", flexDirection: "column",
-          border: `1px solid ${T.border}`, position: "relative",
+          background: T.paper,
+          position: "relative",
           backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${T.paperLine} 28px)`,
         }}
       >
         {/* Header — NCKH branding */}
-        <div style={{ padding: "16px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper }}>
-          <div>
-            <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3 }}>Xin chào, {user?.name || "bạn"} 👋</div>
+        <div className="loc-shell-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper, flexShrink: 0 }}>
+          <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
+            <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Xin chào, {user?.name || "bạn"} 👋</div>
             <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, lineHeight: 1.2 }}>
               NCKH — Ví sinh viên
             </div>
@@ -553,14 +552,14 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
             onClick={logout}
             title="Đăng xuất"
             className="btn-logout"
-            style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(217,164,65,0.35)" }}
+            style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(217,164,65,0.35)", flexShrink: 0 }}
           >
             <LogOut size={16} color="#fff" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="loc-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 90px" }}>
+        <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
           {dataLoading && (
             <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
           )}
@@ -611,11 +610,14 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
         </div>
 
         {/* Bottom nav — 4 tab + FAB nổi ở giữa */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, background: T.card,
-          borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center",
-          padding: "6px 4px 8px", zIndex: 10,
-        }}>
+        <div
+          className="loc-bottom-nav"
+          style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, background: T.card,
+            borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center",
+            zIndex: 10,
+          }}
+        >
           {/* 2 tab trái */}
           {NAV_LEFT.map(({ id, label, Icon }) => {
             const active = tab === id;
@@ -817,14 +819,14 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", marginTop: 4 }}>
           {fmtVND(stats.balance)}
         </div>
-        <div style={{ display: "flex", gap: 18, marginTop: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <TrendingUp size={14} color="#D9A441" />
-            <span style={{ fontSize: 12.5, opacity: 0.9 }}>Thu: {fmtVND(stats.income)}</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <TrendingUp size={14} color="#D9A441" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 12.5, opacity: 0.9, whiteSpace: "nowrap" }}>Thu: {fmtVND(stats.income)}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <TrendingDown size={14} color="#E08D7A" />
-            <span style={{ fontSize: 12.5, opacity: 0.9 }}>Chi: {fmtVND(stats.expense)}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <TrendingDown size={14} color="#E08D7A" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 12.5, opacity: 0.9, whiteSpace: "nowrap" }}>Chi: {fmtVND(stats.expense)}</span>
           </div>
         </div>
       </div>
@@ -836,13 +838,13 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         position: "relative"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             {safeToSpend?.isOverBudget ? (
-              <ShieldAlert size={17} color={T.brick} />
+              <ShieldAlert size={17} color={T.brick} style={{ flexShrink: 0 }} />
             ) : (
-              <ShieldCheck size={17} color={T.teal} />
+              <ShieldCheck size={17} color={T.teal} style={{ flexShrink: 0 }} />
             )}
-            <span style={{ fontSize: 13, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               Hạn mức hôm nay (Safe-to-Spend)
             </span>
           </div>
@@ -851,7 +853,7 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
             title="Cài đặt kỳ nhận tiền & quỹ dự phòng"
             style={{
               display: "flex", alignItems: "center", gap: 3, background: "none",
-              border: "none", cursor: "pointer", color: T.inkSoft, fontSize: 11, padding: "2px 4px"
+              border: "none", cursor: "pointer", color: T.inkSoft, fontSize: 11, padding: "2px 4px", flexShrink: 0,
             }}
           >
             <Settings size={12} />
@@ -859,7 +861,7 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
           </button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 6px" }}>
           <span style={{
             fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif",
             color: safeToSpend?.isOverBudget ? T.brick : T.tealDark
@@ -880,9 +882,9 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
           />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.inkSoft }}>
-          <span>Đã chi: <strong>{fmtVND(safeToSpend?.todayExpenses || 0)}</strong> / {fmtVND(safeToSpend?.dailyLimit || 0)}</span>
-          <span>⏳ Còn <strong>{safeToSpend?.daysRemaining} ngày</strong> (ngày {safeToSpend?.nextPaydayStr})</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px 8px", fontSize: 11, color: T.inkSoft }}>
+          <span style={{ whiteSpace: "nowrap" }}>Đã chi: <strong>{fmtVND(safeToSpend?.todayExpenses || 0)}</strong> / {fmtVND(safeToSpend?.dailyLimit || 0)}</span>
+          <span style={{ whiteSpace: "nowrap" }}>⏳ Còn <strong>{safeToSpend?.daysRemaining} ngày</strong> ({safeToSpend?.nextPaydayStr})</span>
         </div>
       </div>
 
@@ -904,23 +906,24 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
           onClick={onAdd}
           className="btn-gold"
           style={{
-            flex: 1.2, background: T.gold, color: "#3A2A08", border: "none",
-            borderRadius: 12, padding: "11px 12px", fontWeight: 600, fontSize: 13.5, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            flex: 1.1, background: T.gold, color: "#3A2A08", border: "none",
+            borderRadius: 12, padding: "11px 8px", fontWeight: 600, fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap",
           }}
         >
-          <Plus size={16} /> Thêm giao dịch
+          <Plus size={16} style={{ flexShrink: 0 }} /> Thêm giao dịch
         </button>
         <button
           onClick={onOpenVoice}
+          className="btn-teal"
           style={{
             flex: 1, background: T.teal, color: "#fff", border: "none",
-            borderRadius: 12, padding: "11px 12px", fontWeight: 600, fontSize: 13, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            borderRadius: 12, padding: "11px 8px", fontWeight: 600, fontSize: 13, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap",
           }}
           title="Nói để cộng/trừ trực tiếp vào giao dịch ngay lập tức"
         >
-          <Mic size={16} /> Ghi bằng giọng nói
+          <Mic size={16} style={{ flexShrink: 0 }} /> Ghi giọng nói
         </button>
       </div>
 
@@ -938,7 +941,7 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
 
       <div style={{ marginTop: 20 }}>
         {/* Header: title + period pills */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: T.tealDark }}>Chi tiêu theo danh mục</div>
           <div style={{ display: "flex", gap: 4 }}>
             {["week", "month", "year"].map((p) => (
@@ -972,23 +975,23 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         {filteredPieData.length === 0 ? (
           <EmptyNote text={`Chưa có khoản chi nào ${period === "week" ? "trong tuần" : period === "month" ? "trong tháng" : "trong năm"} này.`} />
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 128, height: 128, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 112, height: 112, flexShrink: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={filteredPieData} dataKey="value" nameKey="name" innerRadius={34} outerRadius={58} paddingAngle={2}>
+                  <Pie data={filteredPieData} dataKey="value" nameKey="name" innerRadius={28} outerRadius={50} paddingAngle={2}>
                     {filteredPieData.map((d, i) => <Cell key={i} fill={d.color} stroke={T.paper} strokeWidth={2} />)}
                   </Pie>
                   <RTooltip formatter={(v) => fmtVND(v)} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
               {[...filteredPieData].sort((a, b) => b.value - a.value).slice(0, 5).map((d) => (
-                <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, color: T.inkSoft }}>{d.name}</span>
-                  <span style={{ fontWeight: 600 }}>{fmtVND(d.value)}</span>
+                <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, color: T.inkSoft, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+                  <span style={{ fontWeight: 600, flexShrink: 0, fontSize: 11.5 }}>{fmtVND(d.value)}</span>
                 </div>
               ))}
             </div>
@@ -1246,8 +1249,8 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
         </button>
       </div>
 
-      {/* ── Row 2: Period tabs + navigation (1 dòng) ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+      {/* ── Row 2: Period tabs + navigation ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px 8px", marginBottom: 8 }}>
         <div style={{ display: "flex", gap: 3, background: T.paperLine, borderRadius: 8, padding: 3, flexShrink: 0 }}>
           {[
             { id: "week", label: "Tuần" },
@@ -1275,9 +1278,9 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
         </div>
 
         {period !== "all" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: "auto" }}>
             <button onClick={handlePrev} style={navBtnStyle}><ChevronLeft size={14} /></button>
-            <span style={{ fontSize: 12, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
               {periodLabel}
             </span>
             {!isCurrent ? (
@@ -1294,23 +1297,23 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
         )}
       </div>
 
-      {/* ── Row 3: Summary bar (1 dòng compact) ── */}
+      {/* ── Row 3: Summary bar ── */}
       <div style={{ display: "flex", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
         {[
           { label: "Tổng thu",  value: `+${fmtVND(periodStats.income)}`,  color: T.teal },
           { label: "Tổng chi",  value: `-${fmtVND(periodStats.expense)}`, color: T.brick },
           { label: "Còn lại",   value: `${periodStats.balance >= 0 ? "+" : ""}${fmtVND(periodStats.balance)}`, color: periodStats.balance >= 0 ? T.tealDark : T.brick },
         ].map((s, i) => (
-          <div key={i} style={{ flex: 1, padding: "6px 8px", borderRight: i < 2 ? `1px solid ${T.border}` : "none", textAlign: "center" }}>
+          <div key={i} style={{ flex: 1, minWidth: 0, padding: "6px 4px", borderRight: i < 2 ? `1px solid ${T.border}` : "none", textAlign: "center" }}>
             <div style={{ fontSize: 9.5, color: T.inkSoft }}>{s.label}</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: s.color, fontFamily: "'Space Grotesk',sans-serif", marginTop: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: s.color, fontFamily: "'Space Grotesk',sans-serif", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.value}</div>
           </div>
         ))}
       </div>
 
-      {/* ── Row 4: Search + Type filter (1 dòng) ── */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-        <div style={{ position: "relative", flex: 1 }}>
+      {/* ── Row 4: Search + Type filter ── */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+        <div style={{ position: "relative", flex: "1 1 140px", minWidth: 0 }}>
           <Search size={13} color={T.inkSoft} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
           <input
             type="text"
@@ -1502,17 +1505,17 @@ function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSetti
           Số tiền tối đa bạn được phép tiêu trong ngày hôm nay để không hết tiền trước kỳ nhận trợ cấp hoặc lương tiếp theo.
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: T.paper, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, background: T.paper, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
           <div>
             <div style={{ fontSize: 10.5, color: T.inkSoft }}>Hạn mức hôm nay</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark, fontFamily: "'Space Grotesk',sans-serif" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark, fontFamily: "'Space Grotesk',sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {fmtVND(safeToSpend?.dailyLimit || 0)}
             </div>
             <div style={{ fontSize: 10, color: T.inkSoft }}>{safeToSpend?.isOverBudget ? "⚠️ Đã vượt mức" : `Còn lại: ${fmtVND(safeToSpend?.remainingToday || 0)}`}</div>
           </div>
           <div>
             <div style={{ fontSize: 10.5, color: T.inkSoft }}>Kỳ nhận tiền tới</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.goldDark, fontFamily: "'Space Grotesk',sans-serif" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.goldDark, fontFamily: "'Space Grotesk',sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {safeToSpend?.nextPaydayStr}
             </div>
             <div style={{ fontSize: 10, color: T.inkSoft }}>Còn {safeToSpend?.daysRemaining} ngày</div>
@@ -1534,9 +1537,9 @@ function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSetti
             <div key={c.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <IconBadge Icon={c.Icon} color={c.color} size={30} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.label}</div>
-                  <div style={{ fontSize: 11.5, color: over ? T.brick : T.inkSoft }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</div>
+                  <div style={{ fontSize: 11.5, color: over ? T.brick : T.inkSoft, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {fmtVND(spent)} / {limit > 0 ? fmtVND(limit) : "chưa đặt"}
                   </div>
                 </div>
@@ -2437,8 +2440,8 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
   const cats = form.type === "expense" ? EXPENSE_CATS : INCOME_CATS;
 
   return (
-    <div style={{ position: "absolute", inset: 0, background: "#20302Cb0", display: "flex", alignItems: "flex-end", zIndex: 20 }}>
-      <div style={{ width: "100%", background: T.paper, borderRadius: "18px 18px 0 0", border: `1px solid ${T.border}`, maxHeight: "90vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(32, 48, 44, 0.7)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 10000 }}>
+      <div style={{ width: "100%", maxWidth: 440, background: T.paper, borderRadius: "20px 20px 0 0", border: `1px solid ${T.border}`, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 -8px 30px rgba(0,0,0,0.2)" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 10px" }}>
@@ -2449,7 +2452,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
         </div>
 
         {/* Input-mode tabs */}
-        <div style={{ display: "flex", gap: 6, padding: "0 20px 14px", borderBottom: `1px solid ${T.border}` }}>
+        <div style={{ display: "flex", gap: 5, padding: "0 16px 12px", borderBottom: `1px solid ${T.border}` }}>
           {TABS.map(({ id, label, Icon }) => {
             const isVoiceDisabled = id === "voice" && !speechSupported;
             const active = inputTab === id;
@@ -2461,22 +2464,22 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                 title={isVoiceDisabled ? "Trình duyệt không hỗ trợ Voice" : label}
                 style={{
                   flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "7px 4px", borderRadius: 10, cursor: isVoiceDisabled ? "not-allowed" : "pointer",
+                  padding: "7px 3px", borderRadius: 10, cursor: isVoiceDisabled ? "not-allowed" : "pointer",
                   border: `1px solid ${active ? T.teal : T.border}`,
                   background: active ? T.teal + "18" : T.card,
                   color: isVoiceDisabled ? T.border : active ? T.teal : T.inkSoft,
                   opacity: isVoiceDisabled ? 0.45 : 1,
-                  fontSize: 10, fontWeight: active ? 700 : 500,
+                  fontSize: 10, fontWeight: active ? 700 : 500, minWidth: 0,
                 }}
               >
                 <Icon size={16} />
-                {label}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", textAlign: "center" }}>{label}</span>
               </button>
             );
           })}
         </div>
 
-        <div style={{ padding: "14px 20px 22px" }}>
+        <div style={{ padding: "14px 18px 22px" }}>
 
           {/* ── TAB: Manual (original form) ────────────────────────── */}
           {inputTab === "manual" && (
@@ -2497,20 +2500,20 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </button>
                 ))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
                 {cats.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => setForm((f) => ({ ...f, cat: c.id }))}
                     style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
-                      borderRadius: 10, cursor: "pointer",
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 2px",
+                      borderRadius: 10, cursor: "pointer", minWidth: 0,
                       border: `1px solid ${form.cat === c.id ? c.color : T.border}`,
                       background: form.cat === c.id ? c.color + "22" : T.card,
                     }}
                   >
                     <c.Icon size={16} color={c.color} />
-                    <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center" }}>{c.label}</span>
+                    <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 2px" }}>{c.label}</span>
                   </button>
                 ))}
               </div>
@@ -3046,8 +3049,8 @@ function SafeToSpendForm({ userSettings, onUpdateSettings }) {
   return (
     <div style={{ borderTop: `1px dashed ${T.border}`, paddingTop: 10 }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: T.ink, marginBottom: 6 }}>Thiết lập kỳ trợ cấp & quỹ dự phòng:</div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+        <div style={{ flex: "1 1 140px", minWidth: 0 }}>
           <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: 4 }}>Ngày nhận tiền định kỳ:</div>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ fontSize: 11.5, color: T.inkSoft }}>Ngày</span>
@@ -3059,7 +3062,7 @@ function SafeToSpendForm({ userSettings, onUpdateSettings }) {
             <span style={{ fontSize: 11.5, color: T.inkSoft }}>hàng tháng</span>
           </div>
         </div>
-        <div style={{ flex: 1.5 }}>
+        <div style={{ flex: "1 1 160px", minWidth: 0 }}>
           <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: 4 }}>Quỹ dự phòng khẩn cấp:</div>
           <input
             type="number" step={50000} min={0} value={reserve}
@@ -3089,8 +3092,8 @@ function SafeToSpendSettingsModal({ userSettings, onClose, onSave }) {
   const [reserve, setReserve] = useState(userSettings?.emergency_reserve || 0);
 
   return (
-    <div style={{ position: "absolute", inset: 0, background: "#20302Cb0", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20 }}>
-      <div style={{ width: "100%", maxWidth: 360, background: T.paper, borderRadius: 16, border: `1px solid ${T.border}`, padding: "20px 18px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(32, 48, 44, 0.7)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000, padding: 16 }}>
+      <div style={{ width: "100%", maxWidth: 380, background: T.paper, borderRadius: 18, border: `1px solid ${T.border}`, padding: "20px 18px", boxShadow: "0 12px 32px rgba(0,0,0,0.25)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <ShieldCheck size={18} color={T.teal} />

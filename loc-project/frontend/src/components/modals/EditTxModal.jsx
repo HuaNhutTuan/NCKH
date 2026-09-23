@@ -135,7 +135,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
         </div>
 
         {/* Category grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 14 }}>
           {cats.map((c) => (
             <button
               key={c.id}
@@ -145,16 +145,17 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
-                padding: "8px 4px",
+                gap: 3,
+                padding: "7px 2px",
                 borderRadius: 10,
                 cursor: "pointer",
+                minWidth: 0,
                 border: `1px solid ${form.cat === c.id ? c.color : T.border}`,
                 background: form.cat === c.id ? c.color + "22" : T.card,
               }}
             >
               <c.Icon size={16} color={c.color} />
-              <span style={{ fontSize: 10, color: T.ink, textAlign: "center" }}>{c.label}</span>
+              <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 2px" }}>{c.label}</span>
             </button>
           ))}
         </div>
