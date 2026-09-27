@@ -1291,8 +1291,8 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
   // btn style helpers
   const navBtnStyle = {
     background: "transparent", border: `1px solid ${T.border}`, borderRadius: 6,
-    color: T.ink, cursor: "pointer", padding: "3px 6px",
-    display: "flex", alignItems: "center",
+    color: T.ink, cursor: "pointer", padding: "2px 4px",
+    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
   };
 
   return (
@@ -1317,9 +1317,16 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
         </button>
       </div>
 
-      {/* ── Row 2: Period tabs + navigation ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px 8px", marginBottom: 8 }}>
-        <div style={{ display: "flex", gap: 3, background: T.paperLine, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+      {/* ── Row 2: Period tabs + navigation (chung 1 hàng) ── */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 4,
+        marginBottom: 8,
+        minWidth: 0,
+      }}>
+        <div style={{ display: "flex", gap: 2, background: T.paperLine, borderRadius: 8, padding: 2.5, flexShrink: 0 }}>
           {[
             { id: "week", label: "Tuần" },
             { id: "month", label: "Tháng" },
@@ -1332,11 +1339,12 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
                 key={tab.id}
                 onClick={() => handleSelectPeriod(tab.id)}
                 style={{
-                  padding: "4px 8px", fontSize: 11, fontWeight: active ? 700 : 500,
+                  padding: "3px 6px", fontSize: 10.5, fontWeight: active ? 700 : 500,
                   color: active ? "#fff" : T.inkSoft,
                   background: active ? T.teal : "transparent",
                   border: "none", borderRadius: 6, cursor: "pointer",
                   transition: "all 0.12s ease",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {tab.label}
@@ -1346,21 +1354,21 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
         </div>
 
         {period !== "all" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: "auto" }}>
-            <button onClick={handlePrev} style={navBtnStyle}><ChevronLeft size={14} /></button>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginLeft: "auto" }}>
+            <button onClick={handlePrev} style={navBtnStyle}><ChevronLeft size={13} /></button>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
               {periodLabel}
             </span>
             {!isCurrent ? (
-              <button onClick={handleResetCurrent} style={{ background: T.paperLine, border: "none", borderRadius: 4, fontSize: 9.5, fontWeight: 600, color: T.tealDark, padding: "2px 5px", cursor: "pointer" }}>
+              <button onClick={handleResetCurrent} style={{ background: T.paperLine, border: "none", borderRadius: 4, fontSize: 9, fontWeight: 600, color: T.tealDark, padding: "2px 4px", cursor: "pointer", whiteSpace: "nowrap" }}>
                 Hiện tại
               </button>
             ) : (
-              <span style={{ background: T.teal + "20", color: T.tealDark, borderRadius: 4, fontSize: 9.5, fontWeight: 600, padding: "2px 5px" }}>
+              <span style={{ background: T.teal + "20", color: T.tealDark, borderRadius: 4, fontSize: 9, fontWeight: 600, padding: "2px 4px", whiteSpace: "nowrap" }}>
                 {period === "week" ? "Tuần này" : period === "month" ? "Tháng này" : "Năm nay"}
               </span>
             )}
-            <button onClick={handleNext} style={navBtnStyle}><ChevronRight size={14} /></button>
+            <button onClick={handleNext} style={navBtnStyle}><ChevronRight size={13} /></button>
           </div>
         )}
       </div>
