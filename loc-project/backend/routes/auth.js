@@ -259,7 +259,7 @@ router.put("/profile", requireAuth, async (req, res) => {
 
     if (birthday !== undefined) {
       sql += ", birthday = ?";
-      updates.push(birthday || null);
+      updates.push(birthday ? String(birthday).trim() : null);
     }
 
     if (avatar_url !== undefined) {
@@ -270,7 +270,21 @@ router.put("/profile", requireAuth, async (req, res) => {
     sql += " WHERE id = ?";
     updates.push(req.userId);
 
-    await pool.query(sql, updates);
+    try {
+      await pool.query(sql, updates);
+    } catch (sqlErr) {
+      // Nếu cột chưa có trên CSDL live, tự động tạo bổ sung rồi thử lại
+      if (sqlErr.code === "ER_BAD_FIELD_ERROR") {
+        try { await pool.query("ALTER TABLE users ADD COLUMN avatar_url MEDIUMTEXT DEFAULT NULL"); } catch (_) {}
+        try { await pool.query("ALTER TABLE users MODIFY COLUMN avatar_url MEDIUMTEXT DEFAULT NULL"); } catch (_) {}
+        try { await pool.query("ALTER TABLE users ADD COLUMN birthday DATE DEFAULT NULL"); } catch (_) {}
+        try { await pool.query("ALTER TABLE users ADD COLUMN streak_count INT DEFAULT 1"); } catch (_) {}
+        try { await pool.query("ALTER TABLE users ADD COLUMN last_login_date DATE DEFAULT NULL"); } catch (_) {}
+        await pool.query(sql, updates);
+      } else {
+        throw sqlErr;
+      }
+    }
 
     const [rows] = await pool.query(
       "SELECT id, name, email, role, avatar_url, birthday, streak_count FROM users WHERE id = ?",
@@ -283,7 +297,7 @@ router.put("/profile", requireAuth, async (req, res) => {
     res.json({ user: u, message: "Đã cập nhật hồ sơ thành công." });
   } catch (err) {
     console.error("Lỗi cập nhật hồ sơ:", err);
-    res.status(500).json({ error: "Có lỗi xảy ra khi cập nhật hồ sơ." });
+    res.status(500).json({ error: err.message || "Có lỗi xảy ra khi cập nhật hồ sơ." });
   }
 });
 

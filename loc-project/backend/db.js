@@ -90,10 +90,14 @@ async function initDB() {
       // Đã có cột role
     }
 
-    // Bổ sung cột avatar_url nếu chưa có
+    // Bổ sung hoặc nâng cấp cột avatar_url lên MEDIUMTEXT (hỗ trợ lưu ảnh đại diện)
     try {
-      await conn.query("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL");
-    } catch (e) { /* Đã có cột */ }
+      await conn.query("ALTER TABLE users ADD COLUMN avatar_url MEDIUMTEXT DEFAULT NULL");
+    } catch (e) {
+      try {
+        await conn.query("ALTER TABLE users MODIFY COLUMN avatar_url MEDIUMTEXT DEFAULT NULL");
+      } catch (err2) { /* Đã là MEDIUMTEXT hoặc bỏ qua */ }
+    }
 
     // Bổ sung cột birthday nếu chưa có
     try {

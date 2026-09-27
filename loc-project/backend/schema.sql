@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   email           VARCHAR(190)  NOT NULL UNIQUE,
   password_hash   VARCHAR(255)  NOT NULL,
   role            VARCHAR(20)   DEFAULT 'user',
-  avatar_url      TEXT          DEFAULT NULL,
+  avatar_url      MEDIUMTEXT    DEFAULT NULL,
   birthday        DATE          DEFAULT NULL,
   streak_count    INT           DEFAULT 1,
   last_login_date DATE          DEFAULT NULL,

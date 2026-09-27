@@ -80,6 +80,40 @@ function AvatarCircle({ avatarUrl, name, size = 80, onClick }) {
   );
 }
 
+function compressImage(file, maxSize = 320, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Không thể đọc tệp ảnh."));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Không thể tải tệp ảnh."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ProfileModal({ user, token, onClose, onLogout, onUserUpdate }) {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -107,16 +141,24 @@ export default function ProfileModal({ user, token, onClose, onLogout, onUserUpd
     }
   }, [toast]);
 
-  function handleAvatarChange(e) {
+  async function handleAvatarChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      setToast({ type: "error", msg: "Ảnh tối đa 2MB." });
+    if (!file.type.startsWith("image/")) {
+      setToast({ type: "error", msg: "Vui lòng chọn một tệp hình ảnh hợp lệ." });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => setAvatarUrl(ev.target.result);
-    reader.readAsDataURL(file);
+    if (file.size > 15 * 1024 * 1024) {
+      setToast({ type: "error", msg: "Ảnh tối đa 15MB." });
+      return;
+    }
+    try {
+      const compressed = await compressImage(file, 320, 0.85);
+      setAvatarUrl(compressed);
+      setToast({ type: "success", msg: "Đã chọn ảnh. Bấm 'Lưu thông tin' để cập nhật!" });
+    } catch (err) {
+      setToast({ type: "error", msg: "Không thể xử lý ảnh, vui lòng thử lại." });
+    }
   }
 
   async function handleSaveProfile() {

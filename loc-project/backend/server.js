@@ -16,7 +16,8 @@ const fs = require("fs");
 const app = express();
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
-app.use(express.json());
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 // API health check
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
@@ -39,8 +40,9 @@ app.use(express.static(frontendDistPath));
 
 // Xử lý lỗi chung cho API
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: "Đã có lỗi xảy ra trên server." });
+  console.error("Lỗi server:", err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ error: err.message || "Đã có lỗi xảy ra trên server." });
 });
 
 // Phục vụ frontend SPA cho mọi route (ngoại trừ các endpoint /api)
