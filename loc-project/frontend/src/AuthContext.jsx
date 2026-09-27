@@ -46,8 +46,12 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("loc_token");
   }
 
+  function updateUser(updatedUser) {
+    setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
+  }
+
   return (
-    <AuthContext.Provider value={{ token, user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

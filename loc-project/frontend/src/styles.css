@@ -377,6 +377,34 @@ button {
   box-sizing: border-box;
 }
 
+.loc-chat-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-messages-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+}
+
+.chat-messages-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-messages-scroll::-webkit-scrollbar-thumb {
+  background: #D9D3C1;
+  border-radius: 4px;
+}
+
 /* Mobile Screens (Phone portrait & small screens) */
 @media (max-width: 520px) {
   html, body {
@@ -421,6 +449,12 @@ button {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 12px)) !important;
   }
 
+  .loc-chat-wrapper {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 12px)) !important;
+  }
+
   .loc-bottom-nav {
     padding-left: 6px !important;
     padding-right: 6px !important;
@@ -454,6 +488,10 @@ button {
 
   .loc-scroll {
     padding: 0 20px 90px;
+  }
+
+  .loc-chat-wrapper {
+    padding: 0 20px 88px;
   }
 
   .loc-bottom-nav {

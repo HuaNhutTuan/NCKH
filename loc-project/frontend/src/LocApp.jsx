@@ -9,7 +9,7 @@ import {
   Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse,
   MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
   Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
-  ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil,
+  ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil, User,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
@@ -17,6 +17,7 @@ import Toast from "./components/ui/Toast";
 import ConfirmModal from "./components/ui/ConfirmModal";
 import OnboardingModal from "./components/onboarding/OnboardingModal";
 import EditTxModal from "./components/modals/EditTxModal";
+import ProfileModal from "./components/ui/ProfileModal";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -146,8 +147,9 @@ function ProgressBar({ value, max, color }) {
 }
 
 export default function LocApp() {
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, updateUser } = useAuth();
   const [tab, setTab] = useState("home");
+  const [showProfile, setShowProfile] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState({});
   const [userSettings, setUserSettings] = useState({ payday_day: 1, emergency_reserve: 0 });
@@ -206,7 +208,7 @@ export default function LocApp() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, chatLoading]);
+  }, [messages, chatLoading, tab]);
 
   // ---------- derived stats ----------
   const stats = useMemo(() => {
@@ -549,65 +551,105 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
             </div>
           </div>
           <button
-            onClick={logout}
-            title="Đăng xuất"
-            className="btn-logout"
-            style={{ width: 38, height: 38, borderRadius: "50%", background: T.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(217,164,65,0.35)", flexShrink: 0 }}
+            onClick={() => setShowProfile(true)}
+            title="Hồ sơ cá nhân"
+            className="btn-profile"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              background: user?.avatar_url ? "transparent" : `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
+              border: `2px solid ${T.teal}`,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(31,111,99,0.3)",
+              flexShrink: 0,
+              padding: 0,
+              overflow: "hidden",
+            }}
           >
-            <LogOut size={16} color="#fff" />
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt="avatar"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#fff",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {user?.name
+                  ? user.name.trim().split(" ").filter(Boolean).slice(-2).map((w) => w[0].toUpperCase()).join("")
+                  : <User size={18} color="#fff" />}
+              </span>
+            )}
           </button>
         </div>
 
         {/* Body */}
-        <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          {dataLoading && (
-            <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
-          )}
-          {!dataLoading && tab === "home" && (
-            <HomeTab
-              stats={stats}
-              pieData={pieData}
-              overBudgetCats={overBudgetCats}
-              onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
-              onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
-              transactions={transactions}
-              safeToSpend={safeToSpend}
-              onOpenSettings={() => setShowSettings(true)}
-              onEditTx={(tx) => setEditingTx(tx)}
-              onDeleteTx={deleteTx}
-            />
-          )}
-          {!dataLoading && tab === "transactions" && (
-            <TransactionsTab
-              transactions={transactions}
-              onDelete={deleteTx}
-              onEdit={(tx) => setEditingTx(tx)}
-              onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
-            />
-          )}
-          {!dataLoading && tab === "budget" && (
-            <BudgetTab
-              budgets={budgets}
-              onUpdateBudget={updateBudget}
-              byCat={stats.byCat}
-              userSettings={userSettings}
-              onUpdateSettings={updateSettings}
-              safeToSpend={safeToSpend}
-            />
-          )}
-          {!dataLoading && tab === "chat" && (
-            <ChatTab
-              messages={messages}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              chatLoading={chatLoading}
-              sendChat={sendChat}
-              chatEndRef={chatEndRef}
-              user={user}
-              token={token}
-            />
-          )}
-        </div>
+        {tab !== "chat" ? (
+          <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
+            {dataLoading && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
+            )}
+            {!dataLoading && tab === "home" && (
+              <HomeTab
+                stats={stats}
+                pieData={pieData}
+                overBudgetCats={overBudgetCats}
+                onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+                onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
+                transactions={transactions}
+                safeToSpend={safeToSpend}
+                onOpenSettings={() => setShowSettings(true)}
+                onEditTx={(tx) => setEditingTx(tx)}
+                onDeleteTx={deleteTx}
+              />
+            )}
+            {!dataLoading && tab === "transactions" && (
+              <TransactionsTab
+                transactions={transactions}
+                onDelete={deleteTx}
+                onEdit={(tx) => setEditingTx(tx)}
+                onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+              />
+            )}
+            {!dataLoading && tab === "budget" && (
+              <BudgetTab
+                budgets={budgets}
+                onUpdateBudget={updateBudget}
+                byCat={stats.byCat}
+                userSettings={userSettings}
+                onUpdateSettings={updateSettings}
+                safeToSpend={safeToSpend}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="loc-chat-wrapper">
+            {dataLoading ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
+            ) : (
+              <ChatTab
+                messages={messages}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                chatLoading={chatLoading}
+                sendChat={sendChat}
+                chatEndRef={chatEndRef}
+                user={user}
+                token={token}
+              />
+            )}
+          </div>
+        )}
 
         {/* Bottom nav — 4 tab + FAB nổi ở giữa */}
         <div
@@ -718,6 +760,17 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           onClose={() => setShowOnboarding(false)}
           onComplete={handleOnboardingComplete}
         />
+
+        {/* Modal: Profile người dùng */}
+        {showProfile && (
+          <ProfileModal
+            user={user}
+            token={token}
+            onClose={() => setShowProfile(false)}
+            onLogout={logout}
+            onUserUpdate={(updated) => updateUser?.(updated)}
+          />
+        )}
 
         {/* ConfirmModal (dùng thay thế window.confirm) */}
         <ConfirmModal
@@ -1119,7 +1172,10 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
     setRefDate((prev) => {
       const next = new Date(prev);
       if (period === "week") next.setDate(next.getDate() - 7);
-      else if (period === "month") next.setMonth(next.getMonth() - 1);
+      else if (period === "month") {
+        next.setDate(1);
+        next.setMonth(next.getMonth() - 1);
+      }
       else if (period === "year") next.setFullYear(next.getFullYear() - 1);
       return next;
     });
@@ -1130,7 +1186,10 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
     setRefDate((prev) => {
       const next = new Date(prev);
       if (period === "week") next.setDate(next.getDate() + 7);
-      else if (period === "month") next.setMonth(next.getMonth() + 1);
+      else if (period === "month") {
+        next.setDate(1);
+        next.setMonth(next.getMonth() + 1);
+      }
       else if (period === "year") next.setFullYear(next.getFullYear() + 1);
       return next;
     });
@@ -1139,6 +1198,15 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
   function handleResetCurrent() {
     setCurrentPage(1);
     setRefDate(new Date());
+  }
+
+  function handleSelectPeriod(tabId) {
+    if (period === tabId) {
+      setRefDate(new Date());
+    } else {
+      setPeriod(tabId);
+    }
+    setCurrentPage(1);
   }
 
   function resetAllFilters() {
@@ -1150,8 +1218,8 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
 
   const periodLabel = useMemo(() => {
     if (period === "week") return getWeekRange(refDate).label;
-    if (period === "month") return `Th.${refDate.getMonth() + 1}/${refDate.getFullYear()}`;
-    if (period === "year") return `${refDate.getFullYear()}`;
+    if (period === "month") return `Tháng ${refDate.getMonth() + 1}/${refDate.getFullYear()}`;
+    if (period === "year") return `Năm ${refDate.getFullYear()}`;
     return "Tất cả";
   }, [period, refDate]);
 
@@ -1262,7 +1330,7 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
             return (
               <button
                 key={tab.id}
-                onClick={() => { setPeriod(tab.id); setCurrentPage(1); }}
+                onClick={() => handleSelectPeriod(tab.id)}
                 style={{
                   padding: "4px 8px", fontSize: 11, fontWeight: active ? 700 : 500,
                   color: active ? "#fff" : T.inkSoft,
@@ -2070,8 +2138,9 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
   }, [isAdmin, token]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ marginTop: 12, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      {/* ── Header bar: Target & Tri thức AI ── */}
+      <div style={{ marginTop: 12, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
           <Target size={16} color={T.teal} style={{ flexShrink: 0 }} />
           <div style={{ fontSize: 12, color: T.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -2102,109 +2171,134 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
         />
       )}
 
-      {/* ── Carousel Bí kíp & Mẹo tài chính sinh viên (Hợp nhất từ tab Học cũ) ── */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{
-          background: `linear-gradient(135deg, ${T.card}, #FFFBF0)`,
-          border: `1px solid ${T.border}`,
-          borderRadius: 12, padding: "10px 12px",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-            <Lightbulb size={14} color={T.gold} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.tealDark, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Mẹo tài chính hôm nay
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, fontStyle: "italic" }}>
-            "{TIP_OF_DAY}"
-          </div>
-        </div>
-
-        {/* Danh sách chủ đề học nhanh — Scroll ngang */}
-        <div style={{
-          display: "flex", gap: 8, overflowX: "auto", padding: "8px 0 4px",
-          scrollbarWidth: "none", msOverflowStyle: "none",
-        }}>
-          {LESSONS.map((l, idx) => (
-            <div
-              key={idx}
-              onClick={() => {
-                const prompt = `Giải thích thêm cho mình về "${l.title}": ${l.desc}`;
-                sendChat(prompt);
-              }}
-              style={{
-                flexShrink: 0, width: 175, background: T.card,
-                border: `1px solid ${T.border}`, borderRadius: 10,
-                padding: "8px 10px", cursor: "pointer",
-                transition: "transform 0.15s, border-color 0.15s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.teal; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "none"; }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: T.teal, background: "rgba(31,111,99,0.08)", padding: "1px 5px", borderRadius: 4 }}>
-                  {l.tag}
-                </span>
-                <Sparkles size={11} color={T.gold} />
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, lineHeight: 1.3, marginBottom: 2 }}>
-                {l.title}
-              </div>
-              <div style={{ fontSize: 10, color: T.inkSoft, lineClamp: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {l.desc}
-              </div>
+      {/* ── Scrollable Messages Container (Carousel + Messages + scroll anchor) ── */}
+      <div
+        className="chat-messages-scroll"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          paddingRight: 4,
+          paddingBottom: 12,
+        }}
+      >
+        {/* Carousel Bí kíp & Mẹo tài chính sinh viên (Hợp nhất từ tab Học cũ) */}
+        <div style={{ marginBottom: 4, flexShrink: 0 }}>
+          <div style={{
+            background: `linear-gradient(135deg, ${T.card}, #FFFBF0)`,
+            border: `1px solid ${T.border}`,
+            borderRadius: 12, padding: "10px 12px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+              <Lightbulb size={14} color={T.gold} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.tealDark, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Mẹo tài chính hôm nay
+              </span>
             </div>
-          ))}
+            <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, fontStyle: "italic" }}>
+              "{TIP_OF_DAY}"
+            </div>
+          </div>
+
+          {/* Danh sách chủ đề học nhanh — Scroll ngang */}
+          <div style={{
+            display: "flex", gap: 8, overflowX: "auto", padding: "8px 0 4px",
+            scrollbarWidth: "none", msOverflowStyle: "none",
+          }}>
+            {LESSONS.map((l, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  const prompt = `Giải thích thêm cho mình về "${l.title}": ${l.desc}`;
+                  sendChat(prompt);
+                }}
+                style={{
+                  flexShrink: 0, width: 175, background: T.card,
+                  border: `1px solid ${T.border}`, borderRadius: 10,
+                  padding: "8px 10px", cursor: "pointer",
+                  transition: "transform 0.15s, border-color 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.teal; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.transform = "none"; }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: T.teal, background: "rgba(31,111,99,0.08)", padding: "1px 5px", borderRadius: 4 }}>
+                    {l.tag}
+                  </span>
+                  <Sparkles size={11} color={T.gold} />
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, lineHeight: 1.3, marginBottom: 2 }}>
+                  {l.title}
+                </div>
+                <div style={{ fontSize: 10, color: T.inkSoft, lineClamp: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {l.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Câu hỏi gợi ý nhanh */}
+          <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "4px 0", scrollbarWidth: "none" }}>
+            {SUGGESTED_PROMPTS.map((prompt, idx) => (
+              <button
+                key={idx}
+                onClick={() => sendChat(prompt)}
+                style={{
+                  flexShrink: 0, background: "rgba(31,111,99,0.05)",
+                  border: `1px solid rgba(31,111,99,0.2)`, borderRadius: 14,
+                  padding: "4px 9px", fontSize: 10.5, color: T.tealDark,
+                  cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                💬 {prompt}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Câu hỏi gợi ý nhanh */}
-        <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "4px 0", scrollbarWidth: "none" }}>
-          {SUGGESTED_PROMPTS.map((prompt, idx) => (
-            <button
-              key={idx}
-              onClick={() => sendChat(prompt)}
-              style={{
-                flexShrink: 0, background: "rgba(31,111,99,0.05)",
-                border: `1px solid rgba(31,111,99,0.2)`, borderRadius: 14,
-                padding: "4px 9px", fontSize: 10.5, color: T.tealDark,
-                cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              💬 {prompt}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
+        {/* Danh sách tin nhắn */}
         {messages.map((m, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", flexShrink: 0 }}>
             <div style={{
-              maxWidth: "82%", padding: "9px 12px", borderRadius: 14,
+              maxWidth: "85%", padding: "9px 12px", borderRadius: 14,
               borderBottomRightRadius: m.role === "user" ? 3 : 14,
               borderBottomLeftRadius: m.role === "user" ? 14 : 3,
               background: m.role === "user" ? T.teal : T.card,
               color: m.role === "user" ? "#fff" : T.ink,
               border: m.role === "user" ? "none" : `1px solid ${T.border}`,
               fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
             }}>
               {m.text}
             </div>
           </div>
         ))}
         {chatLoading && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
             <div style={{ padding: "9px 12px", borderRadius: 14, background: T.card, border: `1px solid ${T.border}`, fontSize: 13, color: T.inkSoft }}>
               Tuấn đang soạn câu trả lời…
             </div>
           </div>
         )}
-        <div ref={chatEndRef} />
+        <div ref={chatEndRef} style={{ height: 1, flexShrink: 0 }} />
       </div>
 
-      <div style={{ position: "sticky", bottom: 0, background: T.paper, paddingTop: 10 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+      {/* ── Fixed Chat Input Bar at bottom (above bottom nav) ── */}
+      <div
+        className="chat-input-bar"
+        style={{
+          flexShrink: 0,
+          background: T.paper,
+          paddingTop: 8,
+          paddingBottom: 6,
+          borderTop: `1px solid ${T.border}`,
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
@@ -2213,6 +2307,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
             style={{
               flex: 1, borderRadius: 20, border: `1px solid ${T.border}`, padding: "10px 14px",
               fontSize: 13, outline: "none", background: T.card, color: T.ink,
+              boxShadow: "0 1px 4px rgba(0,0,0,0.03)",
             }}
           />
           <button

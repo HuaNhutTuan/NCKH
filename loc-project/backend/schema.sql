@@ -8,12 +8,16 @@ USE loc_app;
 
 -- Mỗi người dùng có một tài khoản riêng
 CREATE TABLE IF NOT EXISTS users (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  name          VARCHAR(100)  NOT NULL,
-  email         VARCHAR(190)  NOT NULL UNIQUE,
-  password_hash VARCHAR(255)  NOT NULL,
-  role          VARCHAR(20)   DEFAULT 'user',
-  created_at    TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  name            VARCHAR(100)  NOT NULL,
+  email           VARCHAR(190)  NOT NULL UNIQUE,
+  password_hash   VARCHAR(255)  NOT NULL,
+  role            VARCHAR(20)   DEFAULT 'user',
+  avatar_url      TEXT          DEFAULT NULL,
+  birthday        DATE          DEFAULT NULL,
+  streak_count    INT           DEFAULT 1,
+  last_login_date DATE          DEFAULT NULL,
+  created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- Giao dịch thu/chi, gắn với user_id

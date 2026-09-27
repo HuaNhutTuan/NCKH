@@ -90,6 +90,26 @@ async function initDB() {
       // Đã có cột role
     }
 
+    // Bổ sung cột avatar_url nếu chưa có
+    try {
+      await conn.query("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL");
+    } catch (e) { /* Đã có cột */ }
+
+    // Bổ sung cột birthday nếu chưa có
+    try {
+      await conn.query("ALTER TABLE users ADD COLUMN birthday DATE DEFAULT NULL");
+    } catch (e) { /* Đã có cột */ }
+
+    // Bổ sung cột streak_count nếu chưa có
+    try {
+      await conn.query("ALTER TABLE users ADD COLUMN streak_count INT DEFAULT 1");
+    } catch (e) { /* Đã có cột */ }
+
+    // Bổ sung cột last_login_date nếu chưa có
+    try {
+      await conn.query("ALTER TABLE users ADD COLUMN last_login_date DATE DEFAULT NULL");
+    } catch (e) { /* Đã có cột */ }
+
     // Bảng cơ sở tri thức dùng chung (Knowledge Base cho Chat Box AI)
     await conn.query(`
       CREATE TABLE IF NOT EXISTS knowledge_base (

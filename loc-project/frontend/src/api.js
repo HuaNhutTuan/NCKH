@@ -24,6 +24,10 @@ export const authApi = {
   login: (email, password) =>
     request("/auth/login", { method: "POST", body: { email, password } }),
   me: (token) => request("/auth/me", { token }),
+  updateProfile: (token, data) =>
+    request("/auth/profile", { method: "PUT", token, body: data }),
+  changePassword: (token, data) =>
+    request("/auth/change-password", { method: "PUT", token, body: data }),
 };
 
 export const transactionsApi = {
