@@ -56,6 +56,38 @@ async function updateStreak(conn, userId) {
   );
 }
 
+// GET /api/auth/check-email?email=...
+router.get("/check-email", async (req, res) => {
+  try {
+    const rawEmail = req.query.email;
+    if (!rawEmail) {
+      return res.status(400).json({ error: "Vui lòng cung cấp email để kiểm tra." });
+    }
+
+    const cleanEmail = String(rawEmail).trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ error: "Email không hợp lệ.", available: false });
+    }
+
+    const [existing] = await pool.query(
+      "SELECT id FROM users WHERE LOWER(TRIM(email)) = ?",
+      [cleanEmail]
+    );
+
+    const exists = existing.length > 0;
+    return res.json({
+      exists,
+      available: !exists,
+      message: exists
+        ? "Email này đã được đăng ký trong hệ thống."
+        : "Email khả dụng để đăng ký.",
+    });
+  } catch (err) {
+    console.error("Lỗi kiểm tra email:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi kiểm tra email." });
+  }
+});
+
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {

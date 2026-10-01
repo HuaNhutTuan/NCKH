@@ -19,6 +19,8 @@ async function request(path, { method = "GET", token, body } = {}) {
 }
 
 export const authApi = {
+  checkEmail: (email) =>
+    request(`/auth/check-email?email=${encodeURIComponent(email)}`),
   register: (name, email, password) =>
     request("/auth/register", { method: "POST", body: { name, email, password } }),
   login: (email, password) =>

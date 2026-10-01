@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { authApi } from "./api";
 
 const T = {
   paper: "#F1EEE3",
@@ -19,6 +20,57 @@ export default function Login() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null); // { exists: boolean, message: string }
+
+  function switchMode(newMode) {
+    setMode(newMode);
+    setError("");
+    setEmailStatus(null);
+    setEmailChecking(false);
+  }
+
+  // Tự động kiểm tra email trùng khi đăng ký
+  useEffect(() => {
+    if (mode !== "register") {
+      setEmailStatus(null);
+      setEmailChecking(false);
+      return;
+    }
+
+    const cleanEmail = form.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setEmailStatus(null);
+      setEmailChecking(false);
+      return;
+    }
+
+    let isMounted = true;
+    setEmailChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await authApi.checkEmail(cleanEmail);
+        if (isMounted) {
+          setEmailStatus(res);
+          if (res.exists) {
+            setError("Email này đã được đăng ký trong hệ thống. Vui lòng chuyển sang Đăng nhập.");
+          } else if (error && (error.includes("đã được đăng ký") || error.includes("trùng"))) {
+            setError("");
+          }
+        }
+      } catch (err) {
+        // Bỏ qua lỗi mạng nền
+      } finally {
+        if (isMounted) setEmailChecking(false);
+      }
+    }, 400);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [form.email, mode]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -29,6 +81,11 @@ export default function Login() {
 
     if (!cleanEmail || !form.password || (mode === "register" && !cleanName)) {
       setError("Vui lòng điền đầy đủ thông tin.");
+      return;
+    }
+
+    if (mode === "register" && emailStatus?.exists) {
+      setError("Email này đã được đăng ký trước đó. Không thể đăng ký lại!");
       return;
     }
 
@@ -46,11 +103,11 @@ export default function Login() {
     }
   }
 
-  const isDuplicateEmailError = error && (
+  const isDuplicateEmailError = (mode === "register" && emailStatus?.exists) || (error && (
     error.includes("đã được đăng ký") ||
     error.toLowerCase().includes("trùng") ||
     error.toLowerCase().includes("already")
-  );
+  ));
 
   return (
     <div style={{
@@ -86,7 +143,7 @@ export default function Login() {
         }}>
           <button
             type="button"
-            onClick={() => { setMode("login"); setError(""); }}
+            onClick={() => switchMode("login")}
             style={{
               flex: 1,
               padding: "7px 0",
@@ -105,7 +162,7 @@ export default function Login() {
           </button>
           <button
             type="button"
-            onClick={() => { setMode("register"); setError(""); }}
+            onClick={() => switchMode("register")}
             style={{
               flex: 1,
               padding: "7px 0",
@@ -145,8 +202,56 @@ export default function Login() {
           placeholder="Email"
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          style={inputStyle}
+          style={{
+            ...inputStyle,
+            borderColor:
+              mode === "register" && emailStatus?.exists
+                ? T.brick
+                : mode === "register" && emailStatus && !emailStatus.exists
+                ? "#2D7A4F"
+                : T.border,
+            marginBottom:
+              mode === "register" && (emailChecking || emailStatus) ? 4 : 10,
+          }}
         />
+
+        {mode === "register" && emailChecking && (
+          <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 8, paddingLeft: 2 }}>
+            ⏳ Đang kiểm tra email trùng...
+          </div>
+        )}
+
+        {mode === "register" && !emailChecking && emailStatus?.exists && (
+          <div style={{
+            fontSize: 12,
+            color: T.brick,
+            marginBottom: 8,
+            padding: "5px 8px",
+            background: "#AE4C3B14",
+            border: "1px solid #AE4C3B33",
+            borderRadius: 6,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 4,
+          }}>
+            <span>⚠️ Email đã trùng với tài khoản cũ!</span>
+            <span
+              onClick={() => switchMode("login")}
+              style={{ color: T.teal, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}
+            >
+              Đăng nhập ngay
+            </span>
+          </div>
+        )}
+
+        {mode === "register" && !emailChecking && emailStatus && !emailStatus.exists && (
+          <div style={{ fontSize: 12, color: "#2D7A4F", marginBottom: 8, paddingLeft: 2, fontWeight: 500 }}>
+            ✓ Email khả dụng, chưa có ai đăng ký
+          </div>
+        )}
+
         <input
           type="password"
           placeholder="Mật khẩu (ít nhất 6 ký tự)"
@@ -171,7 +276,7 @@ export default function Login() {
             {mode === "register" && isDuplicateEmailError && (
               <div style={{ marginTop: 6 }}>
                 <span
-                  onClick={() => { setMode("login"); setError(""); }}
+                  onClick={() => switchMode("login")}
                   style={{
                     color: T.teal,
                     fontWeight: 700,
@@ -189,31 +294,39 @@ export default function Login() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (mode === "register" && (emailStatus?.exists || emailChecking))}
           className="btn-gold"
           style={{
             width: "100%",
             marginTop: 12,
-            background: T.gold,
+            background: mode === "register" && emailStatus?.exists ? "#D1D5DB" : T.gold,
             border: "none",
             borderRadius: 10,
             padding: "11px 0",
             fontWeight: 700,
             fontSize: 14,
-            color: "#3A2A08",
-            cursor: loading ? "default" : "pointer",
-            opacity: loading ? 0.7 : 1,
+            color: mode === "register" && emailStatus?.exists ? "#6B7280" : "#3A2A08",
+            cursor: loading || (mode === "register" && (emailStatus?.exists || emailChecking)) ? "not-allowed" : "pointer",
+            opacity: loading || (mode === "register" && emailStatus?.exists) ? 0.7 : 1,
             boxSizing: "border-box",
           }}
         >
-          {loading ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Đăng ký"}
+          {loading
+            ? "Đang xử lý..."
+            : mode === "register" && emailChecking
+            ? "Đang kiểm tra email..."
+            : mode === "register" && emailStatus?.exists
+            ? "Email đã trùng — Không thể đăng ký"
+            : mode === "login"
+            ? "Đăng nhập"
+            : "Đăng ký"}
         </button>
 
         <div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: T.inkSoft }}>
           {mode === "login" ? "Chưa có tài khoản? " : "Đã có tài khoản? "}
           <span
             className="btn-link"
-            onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
+            onClick={() => switchMode(mode === "login" ? "register" : "login")}
             style={{ color: T.teal, fontWeight: 600, cursor: "pointer" }}
           >
             {mode === "login" ? "Đăng ký ngay" : "Đăng nhập"}
