@@ -207,50 +207,10 @@ export default function Login() {
             borderColor:
               mode === "register" && emailStatus?.exists
                 ? T.brick
-                : mode === "register" && emailStatus && !emailStatus.exists
-                ? "#2D7A4F"
                 : T.border,
-            marginBottom:
-              mode === "register" && (emailChecking || emailStatus) ? 4 : 10,
+            marginBottom: 10,
           }}
         />
-
-        {mode === "register" && emailChecking && (
-          <div style={{ fontSize: 12, color: T.inkSoft, marginBottom: 8, paddingLeft: 2 }}>
-            ⏳ Đang kiểm tra email trùng...
-          </div>
-        )}
-
-        {mode === "register" && !emailChecking && emailStatus?.exists && (
-          <div style={{
-            fontSize: 12,
-            color: T.brick,
-            marginBottom: 8,
-            padding: "5px 8px",
-            background: "#AE4C3B14",
-            border: "1px solid #AE4C3B33",
-            borderRadius: 6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 4,
-          }}>
-            <span>⚠️ Email đã trùng với tài khoản cũ!</span>
-            <span
-              onClick={() => switchMode("login")}
-              style={{ color: T.teal, fontWeight: 700, textDecoration: "underline", cursor: "pointer" }}
-            >
-              Đăng nhập ngay
-            </span>
-          </div>
-        )}
-
-        {mode === "register" && !emailChecking && emailStatus && !emailStatus.exists && (
-          <div style={{ fontSize: 12, color: "#2D7A4F", marginBottom: 8, paddingLeft: 2, fontWeight: 500 }}>
-            ✓ Email khả dụng, chưa có ai đăng ký
-          </div>
-        )}
 
         <input
           type="password"
