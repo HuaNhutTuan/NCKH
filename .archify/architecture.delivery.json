@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "54dccff2-907a-4480-a44d-387faae57366",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\ADMIN\\Downloads\\loc-project\\.archify\\candidate.json",
+  "output": "C:\\Users\\ADMIN\\Downloads\\loc-project\\.archify\\architecture.html",
+  "specification": {
+    "sha256": "3f45813a3f4ceb36d26866c715b7aa9c13ac76cb3f3eac811330c48dd50b4f79",
+    "bytes": 7322
+  },
+  "artifact": {
+    "sha256": "fd0aed71953d92b3edd1c65c044e5cf2dfd47a05c4fb2a5323b210f0cc4a7d4a",
+    "bytes": 777120
+  }
+}
