@@ -18,6 +18,7 @@ import ConfirmModal from "./components/ui/ConfirmModal";
 import OnboardingModal from "./components/onboarding/OnboardingModal";
 import EditTxModal from "./components/modals/EditTxModal";
 import ProfileModal from "./components/ui/ProfileModal";
+import { formatThousands, parseThousands, handleNumericChange } from "./utils/format";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -325,7 +326,7 @@ export default function LocApp() {
   }
 
   async function addTransaction() {
-    const amt = parseFloat(form.amount);
+    const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) return;
     const payload = {
       type: form.type,
@@ -1556,10 +1557,10 @@ function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSetti
 
   function startEdit(id) {
     setEditing(id);
-    setDraft(String(budgets[id] || ""));
+    setDraft(formatThousands(budgets[id] || ""));
   }
   function saveEdit(id) {
-    const v = parseFloat(draft);
+    const v = parseThousands(draft);
     onUpdateBudget(id, v > 0 ? v : 0);
     setEditing(null);
   }
@@ -1622,7 +1623,11 @@ function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSetti
                 {editing === c.id ? (
                   <div style={{ display: "flex", gap: 4 }}>
                     <input
-                      autoFocus type="number" value={draft} onChange={(e) => setDraft(e.target.value)}
+                      autoFocus
+                      type="text"
+                      inputMode="numeric"
+                      value={draft}
+                      onChange={(e) => handleNumericChange(e, (formatted) => setDraft(formatted))}
                       style={{ width: 90, fontSize: 12, padding: "5px 6px", borderRadius: 6, border: `1px solid ${T.border}` }}
                     />
                     <button
@@ -2357,7 +2362,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
   const imageInputRef = useRef(null);
 
   function handleManualSubmit() {
-    const amt = parseFloat(form.amount);
+    const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) return;
     if (form.type === "expense" && safeToSpend && amt > safeToSpend.remainingToday) {
       const confirmSave = window.confirm(
@@ -2622,14 +2627,17 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
               </div>
               <div>
                 <input
-                  type="number" placeholder="Số tiền (VND)" value={form.amount}
-                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Số tiền (VND)"
+                  value={form.amount}
+                  onChange={(e) => handleNumericChange(e, (formatted) => setForm((f) => ({ ...f, amount: formatted })))}
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 14, marginBottom: 4, background: T.card, color: T.ink }}
                 />
                 {/* Format preview */}
-                {Boolean(Number(form.amount)) && (
+                {Boolean(parseThousands(form.amount)) && (
                   <div style={{ fontSize: 11, color: T.tealDark, fontWeight: 600, padding: "0 4px 6px" }}>
-                    👉 Bằng chữ: {fmtVND(Number(form.amount))}
+                    👉 Bằng chữ: {fmtVND(parseThousands(form.amount))}
                   </div>
                 )}
                 {/* Quick amount chips */}
@@ -2638,7 +2646,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                     <button
                       key={quick}
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, amount: String((Number(f.amount) || 0) + quick) }))}
+                      onClick={() => setForm((f) => ({ ...f, amount: formatThousands((parseThousands(f.amount) || 0) + quick) }))}
                       style={{
                         background: "rgba(217,164,65,0.12)", border: `1px solid ${T.border}`,
                         borderRadius: 6, padding: "3px 7px", fontSize: 10.5, fontWeight: 600,
@@ -2663,7 +2671,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   )}
                 </div>
               </div>
-              {form.type === "expense" && safeToSpend && Number(form.amount) > 0 && Number(form.amount) > safeToSpend.remainingToday && (
+              {form.type === "expense" && safeToSpend && parseThousands(form.amount) > 0 && parseThousands(form.amount) > safeToSpend.remainingToday && (
                 <div style={{
                   background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 10,
                   padding: "10px 12px", marginBottom: 8, display: "flex", gap: 8, alignItems: "flex-start"
@@ -2671,7 +2679,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div style={{ fontSize: 11.5, color: "#7B2317", lineHeight: 1.4 }}>
                     <strong>Cảnh báo vượt hạn mức Safe-to-Spend!</strong><br />
-                    Khoản chi này (<strong>{fmtVND(Number(form.amount))}</strong>) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: <strong>{safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}</strong>). Còn <strong>{safeToSpend.daysRemaining} ngày</strong> nữa mới đến kỳ nhận tiền ({safeToSpend.nextPaydayStr}).
+                    Khoản chi này (<strong>{fmtVND(parseThousands(form.amount))}</strong>) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: <strong>{safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}</strong>). Còn <strong>{safeToSpend.daysRemaining} ngày</strong> nữa mới đến kỳ nhận tiền ({safeToSpend.nextPaydayStr}).
                   </div>
                 </div>
               )}
@@ -3034,9 +3042,10 @@ function AiConfirmPanel({ aiResult, editableTxs, setEditableTxs, splitPeople, se
               </div>
               <div style={{ textAlign: "right" }}>
                 <input
-                  type="number"
-                  value={t.amount}
-                  onChange={(e) => updateTx(idx, "amount", Math.max(0, Number(e.target.value)))}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatThousands(t.amount)}
+                  onChange={(e) => handleNumericChange(e, (_, num) => updateTx(idx, "amount", Math.max(0, num)))}
                   style={{ width: 90, fontSize: 13, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, textAlign: "right", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 6px", background: T.paper }}
                 />
                 <div style={{ fontSize: 10, color: T.inkSoft, marginTop: 2 }}>đ</div>
@@ -3135,16 +3144,16 @@ function AiConfirmPanel({ aiResult, editableTxs, setEditableTxs, splitPeople, se
 // ── Safe-to-Spend Form component (used in Budget tab) ─────────────────────────
 function SafeToSpendForm({ userSettings, onUpdateSettings }) {
   const [payday, setPayday] = useState(userSettings?.payday_day || 1);
-  const [reserve, setReserve] = useState(userSettings?.emergency_reserve || 0);
+  const [reserve, setReserve] = useState(formatThousands(userSettings?.emergency_reserve || 0));
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setPayday(userSettings?.payday_day || 1);
-    setReserve(userSettings?.emergency_reserve || 0);
+    setReserve(formatThousands(userSettings?.emergency_reserve || 0));
   }, [userSettings]);
 
   function handleSave() {
-    onUpdateSettings({ payday_day: payday, emergency_reserve: reserve });
+    onUpdateSettings({ payday_day: payday, emergency_reserve: parseThousands(reserve) });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -3168,8 +3177,10 @@ function SafeToSpendForm({ userSettings, onUpdateSettings }) {
         <div style={{ flex: "1 1 160px", minWidth: 0 }}>
           <div style={{ fontSize: 11, color: T.inkSoft, marginBottom: 4 }}>Quỹ dự phòng khẩn cấp:</div>
           <input
-            type="number" step={50000} min={0} value={reserve}
-            onChange={(e) => setReserve(Math.max(0, parseFloat(e.target.value) || 0))}
+            type="text"
+            inputMode="numeric"
+            value={reserve}
+            onChange={(e) => handleNumericChange(e, (formatted) => setReserve(formatted))}
             placeholder="Số tiền giữ lại (VND)"
             style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.paper }}
           />
@@ -3192,7 +3203,7 @@ function SafeToSpendForm({ userSettings, onUpdateSettings }) {
 // ── Safe-to-Spend Quick Settings Modal (opened from HomeTab) ──────────────────
 function SafeToSpendSettingsModal({ userSettings, onClose, onSave }) {
   const [payday, setPayday] = useState(userSettings?.payday_day || 1);
-  const [reserve, setReserve] = useState(userSettings?.emergency_reserve || 0);
+  const [reserve, setReserve] = useState(formatThousands(userSettings?.emergency_reserve || 0));
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(32, 48, 44, 0.7)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000, padding: 16 }}>
@@ -3239,11 +3250,10 @@ function SafeToSpendSettingsModal({ userSettings, onClose, onSave }) {
             Quỹ dự phòng khẩn cấp giữ lại:
           </label>
           <input
-            type="number"
-            step={50000}
-            min={0}
+            type="text"
+            inputMode="numeric"
             value={reserve}
-            onChange={(e) => setReserve(Math.max(0, parseFloat(e.target.value) || 0))}
+            onChange={(e) => handleNumericChange(e, (formatted) => setReserve(formatted))}
             placeholder="Số tiền giữ lại (VND)"
             style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13, background: T.card }}
           />
@@ -3260,7 +3270,7 @@ function SafeToSpendSettingsModal({ userSettings, onClose, onSave }) {
             Hủy
           </button>
           <button
-            onClick={() => onSave({ payday_day: payday, emergency_reserve: reserve })}
+            onClick={() => onSave({ payday_day: payday, emergency_reserve: parseThousands(reserve) })}
             style={{ flex: 1.5, padding: "9px 0", borderRadius: 8, border: "none", background: T.teal, fontSize: 12.5, fontWeight: 600, color: "#fff", cursor: "pointer" }}
           >
             Lưu cài đặt

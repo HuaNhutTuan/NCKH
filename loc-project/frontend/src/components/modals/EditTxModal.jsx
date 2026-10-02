@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, CheckCircle2, AlertTriangle, Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse, MoreHorizontal, GraduationCap, Wallet, Coins } from "lucide-react";
+import { formatThousands, parseThousands, handleNumericChange } from "../../utils/format";
 
 const EXPENSE_CATS = [
   { id: "food", label: "Ăn uống", color: "#AE4C3B", Icon: Utensils },
@@ -28,7 +29,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
     id: tx.id,
     type: tx.type || "expense",
     cat: tx.cat || tx.category || "food",
-    amount: String(tx.amount || ""),
+    amount: formatThousands(tx.amount || ""),
     note: tx.note || "",
     date: tx.date || "",
   });
@@ -49,7 +50,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
   };
 
   async function handleSave() {
-    const amt = parseFloat(form.amount);
+    const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) {
       alert("Vui lòng nhập số tiền hợp lệ.");
       return;
@@ -163,13 +164,15 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
         {/* Amount input */}
         <div style={{ position: "relative", marginBottom: 6 }}>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             placeholder="Số tiền (VND)"
             value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+            onChange={(e) => handleNumericChange(e, (formatted) => setForm((f) => ({ ...f, amount: formatted })))}
             style={{
               width: "100%",
               padding: "11px 12px",
+              paddingRight: form.amount ? 95 : 12,
               borderRadius: 10,
               border: `1px solid ${T.border}`,
               fontSize: 15,
@@ -179,9 +182,9 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
               boxSizing: "border-box",
             }}
           />
-          {form.amount && Number(form.amount) > 0 && (
-            <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12.5, fontWeight: 700, color: T.teal }}>
-              {fmtVND(Number(form.amount))}
+          {Boolean(parseThousands(form.amount)) && (
+            <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 12.5, fontWeight: 700, color: T.teal, pointerEvents: "none" }}>
+              {fmtVND(parseThousands(form.amount))}
             </div>
           )}
         </div>
@@ -192,7 +195,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
             <button
               key={chip}
               type="button"
-              onClick={() => setForm((f) => ({ ...f, amount: String((Number(f.amount) || 0) + chip) }))}
+              onClick={() => setForm((f) => ({ ...f, amount: formatThousands((parseThousands(f.amount) || 0) + chip) }))}
               style={{
                 padding: "4px 8px",
                 borderRadius: 8,

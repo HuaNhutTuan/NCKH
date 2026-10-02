@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Wallet, Calendar, ShieldCheck, Sparkles, ChevronRight, CheckCircle2 } from "lucide-react";
+import { formatThousands, parseThousands, handleNumericChange } from "../../utils/format";
 
 export default function OnboardingModal({ isOpen, onClose, onComplete }) {
   const [step, setStep] = useState(1);
@@ -13,9 +14,9 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }) {
 
   function handleFinish() {
     onComplete({
-      initialBalance: parseFloat(initialBalance) || 0,
+      initialBalance: parseThousands(initialBalance) || 0,
       payday_day: parseInt(payday) || 1,
-      emergency_reserve: parseFloat(emergencyReserve) || 0,
+      emergency_reserve: parseThousands(emergencyReserve) || 0,
     });
   }
 
@@ -99,14 +100,16 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }) {
             </div>
             <div style={{ position: "relative", marginBottom: 12 }}>
               <input
-                type="number"
-                placeholder="VD: 1500000"
+                type="text"
+                inputMode="numeric"
+                placeholder="VD: 1.500.000"
                 value={initialBalance}
-                onChange={(e) => setInitialBalance(e.target.value)}
+                onChange={(e) => handleNumericChange(e, (formatted) => setInitialBalance(formatted))}
                 autoFocus
                 style={{
                   width: "100%",
                   padding: "12px 14px",
+                  paddingRight: 32,
                   borderRadius: 10,
                   border: "1px solid #D9D3C1",
                   fontSize: 16,
@@ -126,7 +129,7 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }) {
                 <button
                   key={amt}
                   type="button"
-                  onClick={() => setInitialBalance(String(amt))}
+                  onClick={() => setInitialBalance(formatThousands(amt))}
                   style={{
                     padding: "4px 9px",
                     borderRadius: 8,
@@ -258,13 +261,15 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }) {
 
             <div style={{ position: "relative", marginBottom: 20 }}>
               <input
-                type="number"
-                placeholder="VD: 300000 (để 0 nếu không cần)"
+                type="text"
+                inputMode="numeric"
+                placeholder="VD: 300.000 (để 0 nếu không cần)"
                 value={emergencyReserve}
-                onChange={(e) => setEmergencyReserve(e.target.value)}
+                onChange={(e) => handleNumericChange(e, (formatted) => setEmergencyReserve(formatted))}
                 style={{
                   width: "100%",
                   padding: "12px 14px",
+                  paddingRight: 32,
                   borderRadius: 10,
                   border: "1px solid #D9D3C1",
                   fontSize: 15,
