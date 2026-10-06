@@ -16,6 +16,10 @@ const fs = require("fs");
 
 const app = express();
 
+// Bật trust proxy khi chạy phía sau reverse proxy (Render, Nginx, Cloudflare...)
+// Giúp req.ip và express-rate-limit nhận diện chính xác địa chỉ IP của client
+app.set("trust proxy", 1);
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = (process.env.CLIENT_ORIGIN || "")
   .split(",")
