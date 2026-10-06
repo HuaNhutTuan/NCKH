@@ -307,7 +307,7 @@ router.post("/text", async (req, res) => {
     if (err instanceof SyntaxError) {
       return res.status(422).json({ error: "AI trả về dữ liệu không hợp lệ, vui lòng thử lại." });
     }
-    res.status(500).json({ error: err.message || "Có lỗi xảy ra khi phân tích văn bản." });
+    res.status(500).json({ error: "Có lỗi xảy ra khi phân tích văn bản." });
   }
 });
 
@@ -353,10 +353,10 @@ router.post("/image", upload.single("image"), async (req, res) => {
     if (err instanceof SyntaxError) {
       return res.status(422).json({ error: "AI không đọc được hình ảnh này, vui lòng thử ảnh khác hoặc nhập thủ công." });
     }
-    if (err.message.includes("Chỉ chấp nhận")) {
+    if (err.message && err.message.includes("Chỉ chấp nhận")) {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: err.message || "Có lỗi xảy ra khi phân tích hình ảnh." });
+    res.status(500).json({ error: "Có lỗi xảy ra khi phân tích hình ảnh." });
   }
 });
 

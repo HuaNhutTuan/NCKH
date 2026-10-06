@@ -1,12 +1,29 @@
 const express = require("express");
-const crypto = require("crypto");
+const crypto = require("crypto"); // Chỉ dùng cho migration path SHA-256 → bcrypt
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const { requireAuth } = require("../middleware/auth");
 
-function hashPasswordSHA256(password) {
+const SALT_ROUNDS = 12; // bcrypt cost factor — đủ mạnh chống brute-force GPU
+
+// Chỉ dùng để KIỂM TRA mật khẩu SHA-256 cũ (migration), KHÔNG dùng để tạo hash mới
+function sha256(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+// Băm mật khẩu mới — luôn dùng bcrypt
+async function hashPassword(password) {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+// Xác minh mật khẩu — hỗ trợ cả bcrypt (mới) và SHA-256 (cũ, để migration)
+async function verifyPassword(password, hash) {
+  if (hash.startsWith("$2a$") || hash.startsWith("$2b$")) {
+    return bcrypt.compare(password, hash);
+  }
+  // Legacy SHA-256 — không có salt, chỉ dùng để migration
+  return sha256(password) === hash;
 }
 
 const router = express.Router();
@@ -16,7 +33,9 @@ function isValidEmail(email) {
 }
 
 function signToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "24h",
+  });
 }
 
 // Tính toán và cập nhật streak đăng nhập
@@ -115,7 +134,8 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "Email này đã được đăng ký. Vui lòng chuyển sang Đăng nhập." });
     }
 
-    const passwordHash = hashPasswordSHA256(password);
+    // Dùng bcrypt — an toàn, có salt tích hợp, chống rainbow table
+    const passwordHash = await hashPassword(password);
     const today = new Date().toISOString().slice(0, 10);
     const [result] = await pool.query(
       "INSERT INTO users (name, email, password_hash, streak_count, last_login_date) VALUES (?, ?, ?, 1, ?)",
@@ -123,14 +143,13 @@ router.post("/register", async (req, res) => {
     );
 
     const token = signToken(result.insertId);
-    const adminEmail = process.env.ADMIN_EMAIL || "tuannhut419@gmail.com";
-    const userRole = cleanEmail === adminEmail ? "admin" : "user";
+    // Role mặc định là "user" — admin phải được set thủ công qua DB
     res.status(201).json({
       token,
-      user: { id: result.insertId, name: cleanName, email: cleanEmail, role: userRole, streak_count: 1 },
+      user: { id: result.insertId, name: cleanName, email: cleanEmail, role: "user", streak_count: 1 },
     });
   } catch (err) {
-    console.error("Lỗi đăng ký:", err);
+    console.error("Lỗi đăng ký:", err.code || err.message);
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ error: "Email này đã được đăng ký. Vui lòng chuyển sang Đăng nhập." });
     }
@@ -152,7 +171,6 @@ router.post("/login", async (req, res) => {
     }
 
     const cleanEmail = String(email).trim().toLowerCase();
-    const adminEmail = process.env.ADMIN_EMAIL || "tuannhut419@gmail.com";
 
     const [rows] = await pool.query(
       "SELECT id, name, email, password_hash, role, avatar_url, birthday, streak_count, last_login_date FROM users WHERE LOWER(TRIM(email)) = ? ORDER BY id DESC",
@@ -164,19 +182,18 @@ router.post("/login", async (req, res) => {
 
     let matchedUser = null;
     for (const user of rows) {
-      let match = false;
-      if (user.password_hash.startsWith("$2a$") || user.password_hash.startsWith("$2b$")) {
-        match = await bcrypt.compare(password, user.password_hash);
-        if (match) {
-          const newHash = hashPasswordSHA256(password);
-          await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, user.id]);
-        }
-      } else {
-        match = hashPasswordSHA256(password) === user.password_hash;
-      }
-
+      const match = await verifyPassword(password, user.password_hash);
       if (match) {
         matchedUser = user;
+        // Tự động nâng cấp (migration) mật khẩu SHA-256 cũ sang bcrypt có salt
+        if (!user.password_hash.startsWith("$2a$") && !user.password_hash.startsWith("$2b$")) {
+          try {
+            const upgradedHash = await hashPassword(password);
+            await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [upgradedHash, user.id]);
+          } catch (upgradeErr) {
+            console.error("Không thể auto-upgrade mật khẩu:", upgradeErr.code || "ERR");
+          }
+        }
         break;
       }
     }
@@ -203,7 +220,7 @@ router.post("/login", async (req, res) => {
       conn.release();
     }
 
-    const effectiveRole = matchedUser.email === adminEmail || matchedUser.role === "admin" ? "admin" : "user";
+    const effectiveRole = matchedUser.role === "admin" ? "admin" : "user";
     const token = signToken(matchedUser.id);
     res.json({
       token,
@@ -218,7 +235,7 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Lỗi đăng nhập:", err);
+    console.error("Lỗi đăng nhập:", err.code || "LOGIN_ERROR");
     if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ER_ACCESS_DENIED_ERROR" || !process.env.DB_HOST) {
       return res.status(500).json({
         error: "Chưa kết nối cơ sở dữ liệu MySQL trên Render. Vui lòng thêm biến môi trường DB vào Render Dashboard."
@@ -246,15 +263,10 @@ router.get("/me", requireAuth, async (req, res) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: "Không tìm thấy người dùng." });
     const u = rows[0];
-    const adminEmail = process.env.ADMIN_EMAIL || "tuannhut419@gmail.com";
-    if (u.email === adminEmail || u.role === "admin") {
-      u.role = "admin";
-    } else {
-      u.role = u.role || "user";
-    }
+    u.role = u.role === "admin" ? "admin" : "user";
     res.json({ user: u });
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi get /me:", err.code || "ME_ERROR");
     res.status(500).json({ error: "Có lỗi xảy ra." });
   }
 });
@@ -322,14 +334,13 @@ router.put("/profile", requireAuth, async (req, res) => {
       "SELECT id, name, email, role, avatar_url, birthday, streak_count FROM users WHERE id = ?",
       [req.userId]
     );
-    const adminEmail = process.env.ADMIN_EMAIL || "tuannhut419@gmail.com";
     const u = rows[0];
-    if (u.email === adminEmail || u.role === "admin") u.role = "admin";
+    u.role = u.role === "admin" ? "admin" : "user";
 
     res.json({ user: u, message: "Đã cập nhật hồ sơ thành công." });
   } catch (err) {
-    console.error("Lỗi cập nhật hồ sơ:", err);
-    res.status(500).json({ error: err.message || "Có lỗi xảy ra khi cập nhật hồ sơ." });
+    console.error("Lỗi cập nhật hồ sơ:", err.code || "PROFILE_ERROR");
+    res.status(500).json({ error: "Có lỗi xảy ra khi cập nhật hồ sơ." });
   }
 });
 
@@ -354,25 +365,22 @@ router.put("/change-password", requireAuth, async (req, res) => {
     }
 
     const user = rows[0];
-    let match = false;
-    if (user.password_hash.startsWith("$2a$") || user.password_hash.startsWith("$2b$")) {
-      match = await bcrypt.compare(currentPassword, user.password_hash);
-    } else {
-      match = hashPasswordSHA256(currentPassword) === user.password_hash;
-    }
+    const match = await verifyPassword(currentPassword, user.password_hash);
 
     if (!match) {
       return res.status(401).json({ error: "Mật khẩu hiện tại không đúng." });
     }
 
-    const newHash = hashPasswordSHA256(newPassword);
+    // Băm mật khẩu mới bằng bcrypt
+    const newHash = await hashPassword(newPassword);
     await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, req.userId]);
 
     res.json({ message: "Đã đổi mật khẩu thành công." });
   } catch (err) {
-    console.error("Lỗi đổi mật khẩu:", err);
+    console.error("Lỗi đổi mật khẩu:", err.code || "CHANGE_PW_ERROR");
     res.status(500).json({ error: "Có lỗi xảy ra khi đổi mật khẩu." });
   }
 });
 
 module.exports = router;
+

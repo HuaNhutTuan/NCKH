@@ -265,8 +265,9 @@ router.post("/", async (req, res) => {
     }
 
     if (!reply) {
+      console.error("Lỗi Gemini API:", lastError);
       return res.status(500).json({
-        error: lastError || "Không nhận được phản hồi từ Google Gemini.",
+        error: "Không nhận được phản hồi từ dịch vụ AI. Vui lòng thử lại sau.",
       });
     }
 

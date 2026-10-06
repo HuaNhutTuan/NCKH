@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
@@ -15,12 +16,54 @@ const fs = require("fs");
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
+// ─── CORS — Không fallback về "*", phải cấu hình CLIENT_ORIGIN rõ ràng ───────
+const ALLOWED_ORIGINS = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Cho phép request không có origin (curl, mobile app, Postman) trong dev
+    if (!origin && process.env.NODE_ENV !== "production") return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: Origin '${origin}' không được phép truy cập.`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+// Giới hạn brute-force login/register: tối đa 10 lần trong 15 phút mỗi IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 phút
+  max: 10,
+  message: { error: "Quá nhiều lần thử. Vui lòng thử lại sau 15 phút." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Chỉ đếm request thất bại
+});
+
+// Giới hạn chung cho API: 200 request/phút mỗi IP
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 phút
+  max: 200,
+  message: { error: "Quá nhiều yêu cầu. Vui lòng thử lại sau." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // API health check
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+// Áp dụng rate limit chung cho toàn bộ API
+app.use("/api", apiLimiter);
+
+// Áp dụng rate limit nghiêm ngặt cho auth
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 
 // Các route API
 app.use("/api/auth", authRoutes);
@@ -38,11 +81,13 @@ const frontendDistPath = path.join(__dirname, "../frontend/dist");
 app.use(express.static(publicPath));
 app.use(express.static(frontendDistPath));
 
-// Xử lý lỗi chung cho API
+// Xử lý lỗi chung cho API — KHÔNG trả err.message về client
 app.use((err, req, res, next) => {
-  console.error("Lỗi server:", err);
+  // Log đầy đủ phía server để debug
+  console.error("Lỗi server:", { code: err.code, status: err.status, path: req.path });
   const status = err.status || err.statusCode || 500;
-  res.status(status).json({ error: err.message || "Đã có lỗi xảy ra trên server." });
+  // Trả thông báo chung, không lộ stack trace / schema
+  res.status(status).json({ error: "Đã có lỗi xảy ra trên server." });
 });
 
 // Phục vụ frontend SPA cho mọi route (ngoại trừ các endpoint /api)

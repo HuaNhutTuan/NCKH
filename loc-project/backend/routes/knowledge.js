@@ -116,8 +116,11 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Lỗi tải file tài liệu:", err);
-    res.status(500).json({ error: err.message || "Không thể xử lý file tải lên." });
+    console.error("Lỗi tải file tài liệu:", err.code || err.message);
+    const clientMsg = err.message && err.message.includes("Chỉ hỗ trợ file")
+      ? err.message
+      : "Không thể xử lý file tải lên.";
+    res.status(500).json({ error: clientMsg });
   }
 });
 

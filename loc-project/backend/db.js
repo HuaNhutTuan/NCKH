@@ -16,11 +16,15 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || "loc_app",
   waitForConnections: true,
   connectionLimit: 10,
+  charset: "utf8mb4",
   timezone: "+07:00",
   dateStrings: true,
   ssl:
     process.env.DB_SSL === "true" || isCloud
-      ? { rejectUnauthorized: false }
+      ? {
+          rejectUnauthorized: true, // Bật xác thực SSL cert (ngăn chặn MitM attack)
+          ca: process.env.DB_SSL_CA || undefined, // CA cert tuỳ chọn từ cloud provider
+        }
       : undefined,
 });
 

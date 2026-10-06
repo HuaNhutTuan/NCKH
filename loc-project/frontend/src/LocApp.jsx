@@ -10,6 +10,7 @@ import {
   MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
   Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
   ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil, User,
+  Eye, EyeOff,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
@@ -518,6 +519,21 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
     { id: "chat", label: "Trợ lý Tuấn", Icon: MessageCircle },
   ];
 
+  const currentDateVN = useMemo(() => {
+    const now = new Date();
+    const days = [
+      "Chủ nhật",
+      "Thứ hai",
+      "Thứ ba",
+      "Thứ tư",
+      "Thứ năm",
+      "Thứ sáu",
+      "Thứ bảy",
+    ];
+    const dayName = days[now.getDay()];
+    return `${dayName}, ngày ${now.getDate()} tháng ${now.getMonth() + 1}`;
+  }, []);
+
   return (
     <div className="loc-shell-wrapper" style={{ fontFamily: "'Space Grotesk','Inter',sans-serif", color: T.ink, background: "transparent" }}>
       <style>{`
@@ -543,12 +559,12 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
           backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${T.paperLine} 28px)`,
         }}
       >
-        {/* Header — NCKH branding */}
+        {/* Header — Ngày & Người dùng */}
         <div className="loc-shell-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
             <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Xin chào, {user?.name || "bạn"} 👋</div>
-            <div style={{ fontSize: 20, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, lineHeight: 1.2 }}>
-              NCKH — Ví sinh viên
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentDateVN}
             </div>
           </div>
           <button
@@ -800,6 +816,24 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
 function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx }) {
   const recent = transactions.slice(0, 4);
 
+  const [hideBalance, setHideBalance] = useState(() => {
+    try {
+      return localStorage.getItem("loc_hide_balance") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleHideBalance = () => {
+    setHideBalance((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("loc_hide_balance", String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   // ---------- Period filter for pie chart ----------
   const [period, setPeriod] = useState("month"); // "week" | "month" | "year"
   const [offset, setOffset] = useState(0); // 0 = current, -1 = previous, etc.
@@ -869,9 +903,39 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         marginTop: 10, background: T.tealDark, borderRadius: 16, padding: "18px 20px",
         color: "#F1EEE3", position: "relative", overflow: "hidden",
       }}>
-        <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 500 }}>Số dư hiện tại</div>
-        <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", marginTop: 4 }}>
-          {fmtVND(stats.balance)}
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 500 }}>Số dư hiện tại</span>
+          <button
+            type="button"
+            onClick={toggleHideBalance}
+            title={hideBalance ? "Hiện số dư" : "Ẩn số dư"}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "2px 4px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#F1EEE3",
+              opacity: 0.75,
+              borderRadius: 4,
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.75"; }}
+          >
+            {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        <div style={{
+          fontSize: 28,
+          fontWeight: 700,
+          fontFamily: "'Space Grotesk',sans-serif",
+          marginTop: 4,
+          letterSpacing: hideBalance ? "2px" : "normal",
+        }}>
+          {hideBalance ? "••••••••" : fmtVND(stats.balance)}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
