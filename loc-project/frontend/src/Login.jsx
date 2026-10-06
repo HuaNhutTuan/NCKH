@@ -1,32 +1,9 @@
 ﻿import React, { useState, useEffect } from "react";
-import { User, Lock, Eye, EyeOff, Mail, Check, Wifi, AlertCircle, Loader2, X } from "lucide-react";
+import { User, Lock, Eye, EyeOff, Mail, Check, AlertCircle, Loader2, X } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { authApi } from "./api";
 import auroraBg from "./assets/aurora_bg.jpg";
 import "./Login.css";
-
-// Biểu tượng sóng điện thoại
-function CellularSignal() {
-  return (
-    <svg width="17" height="12" viewBox="0 0 17 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0.5" y="8.5" width="2.5" height="3.5" rx="0.8" fill="#FFFFFF" />
-      <rect x="4.8" y="6" width="2.5" height="6" rx="0.8" fill="#FFFFFF" />
-      <rect x="9.2" y="3.5" width="2.5" height="8.5" rx="0.8" fill="#FFFFFF" />
-      <rect x="13.5" y="1" width="2.5" height="11" rx="0.8" fill="#FFFFFF" />
-    </svg>
-  );
-}
-
-// Biểu tượng pin iPhone
-function BatteryIcon() {
-  return (
-    <svg width="24" height="12" viewBox="0 0 25 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="20" height="10" rx="3.5" stroke="#FFFFFF" strokeWidth="1.2" />
-      <rect x="2.5" y="2.5" width="15" height="7" rx="2" fill="#FFFFFF" />
-      <path d="M22.5 4.5V7.5C23.3 7.2 23.8 6.6 23.8 6C23.8 5.4 23.3 4.8 22.5 4.5Z" fill="#FFFFFF" />
-    </svg>
-  );
-}
 
 // Social SVGs
 function GoogleIcon() {
@@ -177,17 +154,6 @@ export default function Login() {
           backgroundImage: `url(${auroraBg})`,
         }}
       >
-        {/* Status bar phong cách iOS */}
-        <div className="aurora-status-bar">
-          <div className="aurora-status-icons">
-            <CellularSignal />
-            <Wifi size={14} strokeWidth={2.4} style={{ marginLeft: 2 }} />
-          </div>
-          <div className="aurora-status-icons">
-            <BatteryIcon />
-          </div>
-        </div>
-
         {/* Khối Glassmorphism mờ sang trọng */}
         <div className="aurora-glass-card">
           {/* Tiêu đề & phụ đề */}

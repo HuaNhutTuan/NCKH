@@ -52,10 +52,10 @@
   background-repeat: no-repeat;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
   box-sizing: border-box;
   overflow: hidden;
-  padding: 14px 20px 24px;
+  padding: 24px 20px 24px;
 }
 
 @media (min-width: 521px) {
@@ -66,25 +66,6 @@
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 40px rgba(38, 229, 220, 0.15);
   }
-}
-
-/* Top mobile status bar */
-.aurora-status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 8px 10px;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  z-index: 10;
-  user-select: none;
-}
-
-.aurora-status-icons {
-  display: flex;
-  align-items: center;
-  gap: 7px;
 }
 
 /* The glassmorphism card */
@@ -102,7 +83,7 @@
     inset 0 1px 1px rgba(255, 255, 255, 0.35),
     inset 0 -1px 1px rgba(255, 255, 255, 0.08),
     0 18px 45px rgba(0, 0, 0, 0.45);
-  padding: 28px 22px 20px;
+  padding: 28px 22px 22px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
