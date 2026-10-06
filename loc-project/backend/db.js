@@ -22,8 +22,8 @@ const pool = mysql.createPool({
   ssl:
     process.env.DB_SSL === "true" || isCloud
       ? {
-          rejectUnauthorized: true, // Bật xác thực SSL cert (ngăn chặn MitM attack)
-          ca: process.env.DB_SSL_CA || undefined, // CA cert tuỳ chọn từ cloud provider
+          rejectUnauthorized: false, // Cho phép kết nối an toàn với Cloud MySQL (Aiven, TiDB, CleverCloud, Render)
+          ca: process.env.DB_SSL_CA || undefined,
         }
       : undefined,
 });

@@ -32,8 +32,12 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  "d43631701a15e51eba157051c3d3166c623a93860b2dc6eeb1731f72a7b397a9d32b85994359d0f84bb0ff49842cc088af6113c59fcbf728aff189c8fc8100b9";
+
 function signToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
+  return jwt.sign({ userId }, JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
   });
 }
@@ -149,13 +153,22 @@ router.post("/register", async (req, res) => {
       user: { id: result.insertId, name: cleanName, email: cleanEmail, role: "user", streak_count: 1 },
     });
   } catch (err) {
-    console.error("Lỗi đăng ký:", err.code || err.message);
+    console.error("Lỗi đăng ký:", err.message || err.code || err);
     if (err.code === "ER_DUP_ENTRY") {
       return res.status(409).json({ error: "Email này đã được đăng ký. Vui lòng chuyển sang Đăng nhập." });
     }
-    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ER_ACCESS_DENIED_ERROR" || !process.env.DB_HOST) {
+    const isDbConnError =
+      !process.env.DB_HOST ||
+      err.code === "ECONNREFUSED" ||
+      err.code === "ENOTFOUND" ||
+      err.code === "ER_ACCESS_DENIED_ERROR" ||
+      err.code === "PROTOCOL_CONNECTION_LOST" ||
+      err.code === "ETIMEDOUT" ||
+      err.code === "EAI_AGAIN" ||
+      (err.message && (err.message.toLowerCase().includes("handshake") || err.message.toLowerCase().includes("ssl")));
+    if (isDbConnError) {
       return res.status(500).json({
-        error: "Chưa kết nối cơ sở dữ liệu MySQL trên Render. Vui lòng thêm biến môi trường DB vào Render Dashboard."
+        error: "Chưa kết nối được cơ sở dữ liệu MySQL trên Render. Vui lòng kiểm tra thông tin cấu hình DB."
       });
     }
     res.status(500).json({ error: "Có lỗi xảy ra khi đăng ký, thử lại sau." });
@@ -202,22 +215,25 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng." });
     }
 
-    // Cập nhật streak sau khi đăng nhập thành công
-    const conn = await pool.getConnection();
+    // Cập nhật streak sau khi đăng nhập thành công (nếu lỗi cũng không chặn đăng nhập)
     try {
-      await updateStreak(conn, matchedUser.id);
-      // Lấy lại streak mới nhất
-      const [fresh] = await conn.query(
-        "SELECT streak_count, last_login_date, avatar_url, birthday FROM users WHERE id = ?",
-        [matchedUser.id]
-      );
-      if (fresh.length > 0) {
-        matchedUser.streak_count = fresh[0].streak_count;
-        matchedUser.avatar_url = fresh[0].avatar_url;
-        matchedUser.birthday = fresh[0].birthday;
+      const conn = await pool.getConnection();
+      try {
+        await updateStreak(conn, matchedUser.id);
+        const [fresh] = await conn.query(
+          "SELECT streak_count, last_login_date, avatar_url, birthday FROM users WHERE id = ?",
+          [matchedUser.id]
+        );
+        if (fresh.length > 0) {
+          matchedUser.streak_count = fresh[0].streak_count;
+          matchedUser.avatar_url = fresh[0].avatar_url;
+          matchedUser.birthday = fresh[0].birthday;
+        }
+      } finally {
+        conn.release();
       }
-    } finally {
-      conn.release();
+    } catch (streakErr) {
+      console.warn("Lỗi cập nhật streak (không ảnh hưởng đăng nhập):", streakErr.message);
     }
 
     const effectiveRole = matchedUser.role === "admin" ? "admin" : "user";
@@ -235,10 +251,19 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Lỗi đăng nhập:", err.code || "LOGIN_ERROR");
-    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND" || err.code === "ER_ACCESS_DENIED_ERROR" || !process.env.DB_HOST) {
+    console.error("Lỗi đăng nhập:", err.message || err.code || err);
+    const isDbConnError =
+      !process.env.DB_HOST ||
+      err.code === "ECONNREFUSED" ||
+      err.code === "ENOTFOUND" ||
+      err.code === "ER_ACCESS_DENIED_ERROR" ||
+      err.code === "PROTOCOL_CONNECTION_LOST" ||
+      err.code === "ETIMEDOUT" ||
+      err.code === "EAI_AGAIN" ||
+      (err.message && (err.message.toLowerCase().includes("handshake") || err.message.toLowerCase().includes("ssl")));
+    if (isDbConnError) {
       return res.status(500).json({
-        error: "Chưa kết nối cơ sở dữ liệu MySQL trên Render. Vui lòng thêm biến môi trường DB vào Render Dashboard."
+        error: "Chưa kết nối được cơ sở dữ liệu MySQL trên Render. Vui lòng kiểm tra lại cấu hình DB."
       });
     }
     res.status(500).json({ error: "Có lỗi xảy ra khi đăng nhập, thử lại sau." });

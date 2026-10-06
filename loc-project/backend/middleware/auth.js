@@ -2,6 +2,10 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 require("dotenv").config();
 
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  "d43631701a15e51eba157051c3d3166c623a93860b2dc6eeb1731f72a7b397a9d32b85994359d0f84bb0ff49842cc088af6113c59fcbf728aff189c8fc8100b9";
+
 // Kiểm tra JWT trong header "Authorization: Bearer <token>"
 // Nếu hợp lệ, gắn req.userId để các route sau dùng
 function requireAuth(req, res, next) {
@@ -13,7 +17,7 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
     req.userId = payload.userId;
     next();
   } catch (err) {
