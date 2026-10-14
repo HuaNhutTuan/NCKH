@@ -226,7 +226,7 @@ export default function Login() {
 
         // Chuyển hướng trực tiếp đến trang Google OAuth 2.0 chính thức
         // Tham số prompt=select_account yêu cầu Google hiển thị màn hình Chọn tài khoản trên thiết bị!
-        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        const redirectUri = encodeURIComponent(window.location.origin);
         const scope = encodeURIComponent("openid email profile");
         window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId.trim()}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account&state=Google`;
         return;
@@ -244,7 +244,7 @@ export default function Login() {
           return;
         }
 
-        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        const redirectUri = encodeURIComponent(window.location.origin);
         window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId.trim()}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile&state=Facebook`;
         return;
       }
@@ -260,12 +260,12 @@ export default function Login() {
     const cleanId = inputOAuthId.trim();
     if (socialProvider === "Google") {
       localStorage.setItem("loc_google_client_id", cleanId);
-      const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+      const redirectUri = encodeURIComponent(window.location.origin);
       const scope = encodeURIComponent("openid email profile");
       window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${cleanId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account&state=Google`;
     } else {
       localStorage.setItem("loc_facebook_app_id", cleanId);
-      const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+      const redirectUri = encodeURIComponent(window.location.origin);
       window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${cleanId}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile&state=Facebook`;
     }
   }
