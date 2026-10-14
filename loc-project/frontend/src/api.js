@@ -34,6 +34,9 @@ export const authApi = {
     request("/auth/social/send-otp", { method: "POST", body: { email, provider } }),
   verifySocialOtp: (email, code, provider) =>
     request("/auth/social/verify-otp", { method: "POST", body: { email, code, provider } }),
+  getOAuthConfig: () => request("/auth/oauth-config"),
+  socialDirectLogin: ({ email, name, avatar, provider }) =>
+    request("/auth/social-login", { method: "POST", body: { email, name, avatar, provider } }),
 };
 
 export const transactionsApi = {

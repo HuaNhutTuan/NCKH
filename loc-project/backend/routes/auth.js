@@ -579,7 +579,106 @@ router.post("/social/verify-otp", async (req, res) => {
   }
 });
 
+// GET /api/auth/oauth-config — cấu hình OAuth thật nếu có
+router.get("/oauth-config", (req, res) => {
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+    facebookAppId: process.env.FACEBOOK_APP_ID || "",
+  });
+});
+
+// POST /api/auth/social-login — Đăng nhập trực tiếp từ màn hình Chọn tài khoản Google / Facebook OAuth
+router.post("/social-login", async (req, res) => {
+  try {
+    const { email, name, avatar, provider } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Vui lòng cung cấp email tài khoản." });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ error: "Địa chỉ email không hợp lệ." });
+    }
+
+    const safeProvider = provider === "Facebook" ? "Facebook" : "Google";
+    const displayName = name ? String(name).trim() : cleanEmail.split("@")[0];
+
+    // Kiểm tra tài khoản trong database
+    const [existing] = await pool.query(
+      "SELECT id, name, email, role, avatar_url, birthday, streak_count FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1",
+      [cleanEmail]
+    );
+
+    let loggedInUser = null;
+
+    if (existing.length > 0) {
+      loggedInUser = existing[0];
+      // Nếu có avatar mới và DB chưa có thì cập nhật
+      if (avatar && !loggedInUser.avatar_url) {
+        try {
+          await pool.query("UPDATE users SET avatar_url = ? WHERE id = ?", [avatar, loggedInUser.id]);
+          loggedInUser.avatar_url = avatar;
+        } catch (_) {}
+      }
+      try {
+        const conn = await pool.getConnection();
+        try {
+          await updateStreak(conn, loggedInUser.id);
+        } finally {
+          conn.release();
+        }
+      } catch (e) {
+        console.warn("Lỗi updateStreak trong social-login:", e.message);
+      }
+    } else {
+      // Người dùng mới từ Google/Facebook -> Tự động đăng ký
+      const randomSecret = crypto.randomBytes(16).toString("hex");
+      const passwordHash = await hashPassword(randomSecret);
+      const today = new Date().toISOString().slice(0, 10);
+
+      const [insertResult] = await pool.query(
+        "INSERT INTO users (name, email, password_hash, avatar_url, streak_count, last_login_date) VALUES (?, ?, ?, ?, 1, ?)",
+        [displayName, cleanEmail, passwordHash, avatar || null, today]
+      );
+
+      loggedInUser = {
+        id: insertResult.insertId,
+        name: displayName,
+        email: cleanEmail,
+        role: "user",
+        avatar_url: avatar || null,
+        birthday: null,
+        streak_count: 1,
+      };
+    }
+
+    const token = signToken(loggedInUser.id);
+    const effectiveRole = loggedInUser.role === "admin" ? "admin" : "user";
+
+    console.log(`[SOCIAL OAUTH] Đăng nhập thành công qua ${safeProvider}: ${cleanEmail} (${displayName})`);
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: loggedInUser.id,
+        name: loggedInUser.name,
+        email: loggedInUser.email,
+        role: effectiveRole,
+        avatar_url: loggedInUser.avatar_url || null,
+        birthday: loggedInUser.birthday || null,
+        streak_count: loggedInUser.streak_count || 1,
+      },
+      message: `Đăng nhập bằng tài khoản ${safeProvider} thành công!`,
+    });
+  } catch (err) {
+    console.error("Lỗi social-login:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi đăng nhập bằng mạng xã hội." });
+  }
+});
+
 module.exports = router;
+
 
 
 

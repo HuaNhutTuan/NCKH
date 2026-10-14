@@ -3,6 +3,7 @@ import { User, Lock, Eye, EyeOff, Mail, Check, AlertCircle, Loader2, X } from "l
 import { useAuth } from "./AuthContext";
 import { authApi } from "./api";
 import auroraBg from "./assets/aurora_bg.jpg";
+import SocialOAuthModal from "./components/ui/SocialOAuthModal";
 import "./Login.css";
 
 // Social SVGs
@@ -151,18 +152,26 @@ export default function Login() {
     return () => clearInterval(timer);
   }, [resendCountdown]);
 
-  function handleSocialClick(providerName) {
+  async function handleSocialClick(providerName) {
     setSocialProvider(providerName);
-    setSocialStep(1);
-    setSocialEmail(form.email || "");
-    setSocialError("");
-    setSocialSuccessMsg("");
-    setSocialOptions([]);
-    setSocialCorrectNumber(null);
-    setEmailSent(false);
-    setSelectedNum(null);
-    setResendCountdown(0);
-    setActiveModal("social");
+    // Kiểm tra cấu hình OAuth thật từ backend nếu có Client ID
+    try {
+      const cfg = await authApi.getOAuthConfig();
+      if (providerName === "Google" && cfg?.googleClientId) {
+        const redirectUri = encodeURIComponent(window.location.origin + "/");
+        const scope = encodeURIComponent("openid profile email");
+        window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${cfg.googleClientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account`;
+        return;
+      }
+      if (providerName === "Facebook" && cfg?.facebookAppId) {
+        const redirectUri = encodeURIComponent(window.location.origin + "/");
+        window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${cfg.facebookAppId}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile`;
+        return;
+      }
+    } catch (_) {}
+
+    // Mở giao diện Chọn tài khoản Google / Facebook chuẩn OAuth
+    setActiveModal("oauth_chooser");
   }
 
   // Gửi email xác minh danh tính thực tế với con số xác nhận bí mật
@@ -632,6 +641,18 @@ export default function Login() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Cửa sổ Chọn tài khoản Google / Facebook chuẩn giao diện OAuth */}
+      {activeModal === "oauth_chooser" && (
+        <SocialOAuthModal
+          provider={socialProvider}
+          onClose={() => setActiveModal(null)}
+          onSuccess={(sessionData) => {
+            saveSession(sessionData);
+            setActiveModal(null);
+          }}
+        />
       )}
     </div>
   );
