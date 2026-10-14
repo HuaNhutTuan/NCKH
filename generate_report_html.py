@@ -1,0 +1,567 @@
+import os
+import subprocess
+
+html_content = """<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Báo Cáo Thiết Kế Kịch Bản Sư Phạm Cho AI Trong Quản Lý Tài Chính</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm 18mm;
+    @bottom-right {
+      content: counter(page);
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1e293b;
+    font-size: 13.5px;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Cover Page */
+  .cover-page {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 92vh;
+    border: 3px double #1e3a8a;
+    padding: 40px 30px;
+    text-align: center;
+  }
+
+  .cover-header {
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 20px;
+  }
+
+  .org-name {
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #1e3a8a;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .sub-org {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+  }
+
+  .cover-title-box {
+    margin: auto 0;
+    padding: 30px 20px;
+  }
+
+  .doc-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+  }
+
+  .main-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+  }
+
+  .sub-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.5;
+    max-width: 90%;
+    margin: 0 auto;
+  }
+
+  .cover-info {
+    text-align: left;
+    margin: 30px auto;
+    width: 85%;
+    background: #f8fafc;
+    border-left: 4px solid #2563eb;
+    padding: 15px 25px;
+    border-radius: 4px;
+    font-size: 13.5px;
+  }
+
+  .cover-info table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .cover-info td {
+    padding: 6px 4px;
+    border: none;
+  }
+
+  .cover-footer {
+    font-size: 12.5px;
+    color: #64748b;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+  }
+
+  /* Main Sections */
+  h1 {
+    color: #1e3a8a;
+    font-size: 18px;
+    font-weight: 700;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 6px;
+    margin-top: 25px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 20px;
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    color: #2563eb;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+  }
+
+  ul, ol {
+    margin: 0 0 12px 0;
+    padding-left: 24px;
+  }
+
+  li {
+    margin-bottom: 5px;
+    text-align: justify;
+  }
+
+  /* Callout boxes */
+  .callout {
+    background: #f0fdf4;
+    border-left: 4px solid #16a34a;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .callout-blue {
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .callout-warning {
+    background: #fffbeb;
+    border-left: 4px solid #d97706;
+    padding: 12px 16px;
+    margin: 14px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .callout-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  /* Tables */
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 12.5px;
+  }
+
+  table.data-table th, table.data-table td {
+    border: 1px solid #cbd5e1;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  table.data-table th {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+  }
+
+  table.data-table tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+
+  /* Dialogue Box */
+  .dialogue-box {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 14px 0;
+    font-size: 12.5px;
+  }
+
+  .dialogue-turn {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e2e8f0;
+  }
+
+  .dialogue-turn:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .speaker-student {
+    font-weight: 700;
+    color: #475569;
+  }
+
+  .speaker-ai {
+    font-weight: 700;
+    color: #2563eb;
+  }
+
+  .prompt-box {
+    background: #1e293b;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 14px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    margin: 12px 0;
+    white-space: pre-wrap;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-success { background: #dcfce7; color: #15803d; }
+  .badge-primary { background: #dbeafe; color: #1d4ed8; }
+  .badge-warning { background: #fef3c7; color: #b45309; }
+
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+<!-- TRANG BÌA -->
+<div class="cover-page">
+  <div class="cover-header">
+    <div class="org-name">BÁO CÁO THIẾT KẾ KỸ THUẬT & SƯ PHẠM SỐ</div>
+    <div class="sub-org">DỰ ÁN NGHIÊN CỨU & ỨNG DỤNG TRÍ TUỆ NHÂN TẠO TRONG GIÁO DỤC</div>
+  </div>
+
+  <div class="cover-title-box">
+    <div class="doc-label">TÀI LIỆU ĐẶC TẢ SƯ PHẠM CHUYÊN SÂU</div>
+    <div class="main-title">THIẾT KẾ KỊCH BẢN SƯ PHẠM CHO AI<br>TRONG GIÁO DỤC QUẢN LÝ TÀI CHÍNH CÁ NHÂN</div>
+    <div class="sub-title">Ứng dụng Phương pháp Gợi mở Socratic, Thang đo Nhận thức Bloom và Lý thuyết Cú huých (Nudge Theory) xây dựng Hệ thống Cố vấn Tài chính Sinh viên Tương tác</div>
+  </div>
+
+  <div class="cover-info">
+    <table>
+      <tr>
+        <td style="width: 35%;"><strong>Lĩnh vực nghiên cứu:</strong></td>
+        <td>Giáo dục Tài chính (FinEd) & EdTech / AI Pedagogy</td>
+      </tr>
+      <tr>
+        <td><strong>Đối tượng thụ hưởng:</strong></td>
+        <td>Sinh viên Đại học / Cao đẳng & Người bắt đầu tự chủ tài chính</td>
+      </tr>
+      <tr>
+        <td><strong>Mô hình AI áp dụng:</strong></td>
+        <td>Generative AI / LLM (Gemini Multimodal, Socratic Agent)</td>
+      </tr>
+      <tr>
+        <td><strong>Khung lý thuyết sư phạm:</strong></td>
+        <td>Học tập trải nghiệm Kolb, Scaffolding, Bloom's Taxonomy</td>
+      </tr>
+      <tr>
+        <td><strong>Ngày ban hành:</strong></td>
+        <td>Tháng 10 / 2026</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="cover-footer">
+    Bản quyền tài liệu © 2026. Phục vụ công tác nghiên cứu, đào tạo và phát triển hệ thống trợ lý tài chính thông minh.
+  </div>
+</div>
+
+<!-- NỘI DUNG CHÍNH -->
+<div class="report-content">
+
+  <h1>1. TỔNG QUAN VÀ BỐI CẢNH SƯ PHẠM</h1>
+  
+  <h2>1.1. Thực trạng nhận thức tài chính của sinh viên</h2>
+  <p>
+    Bước vào môi trường đại học là thời điểm phần lớn sinh viên lần đầu tiên tự chủ hoàn toàn về thu chi cá nhân. Tuy nhiên, theo các khảo sát thực tế, phần lớn người học đối mặt với các vấn đề:
+  </p>
+  <ul>
+    <li><strong>Hội chứng "Viêm màng túi cuối tháng":</strong> Chi tiêu theo cảm xúc, phụ thuộc mạnh vào các tiện ích thanh toán trực tuyến, thẻ tín dụng, dịch vụ "Mua trước trả sau" (BNPL).</li>
+    <li><strong>Thiếu năng lực phân biệt Nhu cầu (Needs) và Mong muốn (Wants):</strong> Dễ bị tác động bởi bẫy tâm lý xã hội (FOMO) và các chiến dịch kích cầu tiêu dùng.</li>
+    <li><strong>Rào cản từ cách giáo dục tài chính truyền thống:</strong> Các bài học lý thuyết khô cứng, bảng tính Excel phức tạp hoặc các bài giảng thụ động không mang lại động lực duy trì thói quen ghi chép và kiểm soát ngân sách.</li>
+  </ul>
+
+  <h2>1.2. Vai trò mới của AI trong Kịch bản Sư phạm tương tác</h2>
+  <p>
+    Trí tuệ nhân tạo (AI) đóng vai trò là một <strong>"Cố vấn Tài chính Ảo Đồng hành" (AI Financial Mentor / Companion)</strong> thay vì một công cụ trích xuất công thức cứng nhắc:
+  </p>
+  <div class="callout-blue">
+    <div class="callout-title">Chuyển dịch mô hình Sư phạm AI:</div>
+    <strong>Từ "AI Cung cấp đáp án"</strong> (Direct Answer) ➔ <strong>Sang "AI Dẫn dắt nhận thức"</strong> (Socratic Dialogue): AI không đơn thuần nói "Bạn đã tiêu quá tay 500.000 VNĐ", mà đặt câu hỏi phản tư: <em>"Khoản chi trà sữa 4 lần tuần qua đang thuộc nhóm Mong muốn hay Thiết yếu? Nếu cắt giảm 50%, mục tiêu tiết kiệm mua laptop tháng tới của bạn sẽ thay đổi ra sao?"</em>
+  </div>
+
+  <h1>2. KHUNG LÝ THUYẾT VÀ NGUYÊN TẮC THIẾT KẾ SƯ PHẠM</h1>
+  
+  <h2>2.1. Khung lý thuyết nền tảng</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Lý thuyết</th>
+        <th style="width: 35%;">Nội dung cốt lõi</th>
+        <th style="width: 40%;">Cách tích hợp vào AI Prompt & Phản hồi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Thang đo Bloom cải tiến</strong></td>
+        <td>Phát triển năng lực từ Biết ➔ Hiểu ➔ Vận dụng ➔ Phân tích ➔ Đánh giá ➔ Sáng tạo.</td>
+        <td>Bắt đầu từ phân loại hóa đơn (Hiểu) đến lập kế hoạch ngân sách cá nhân tùy biến (Sáng tạo).</td>
+      </tr>
+      <tr>
+        <td><strong>Học tập qua trải nghiệm (David Kolb)</strong></td>
+        <td>Trải nghiệm cụ thể ➔ Quan sát phản tư ➔ Khái quát hóa ➔ Thử nghiệm tích cực.</td>
+        <td>AI phân tích lịch sử chi tiêu thực tế của người học, yêu cầu tự nhìn nhận nguyên nhân và thử áp dụng hạn mức mới.</td>
+      </tr>
+      <tr>
+        <td><strong>Bắc giàn tri thức (Scaffolding - Vygotsky)</strong></td>
+        <td>Hỗ trợ người học trong Vùng phát triển gần nhất (ZPD) và rút dần trợ giúp khi đã tự chủ.</td>
+        <td>Giai đoạn đầu AI gợi ý 3 lựa chọn có sẵn, giai đoạn sau AI yêu cầu người học tự xây dựng giải pháp xử lý thâm hụt.</td>
+      </tr>
+      <tr>
+        <td><strong>Lý thuyết Cú huých (Nudge Theory)</strong></td>
+        <td>Tác động vi mô giúp định hình hành vi tích cực mà không mang tính ép buộc.</td>
+        <td>AI gửi thông điệp động viên, quy đổi số tiền tiết kiệm được thành mục tiêu cụ thể (vé xe về quê, học phí).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>2.2. Mục tiêu học tập (Learning Objectives - LOs)</h2>
+  <ul>
+    <li><strong>LO1 (Nhận thức):</strong> Phân loại chính xác 100% các khoản chi thực tế vào 3 nhóm: Nhu cầu thiết yếu, Mong muốn giải trí, và Tích lũy dự phòng.</li>
+    <li><strong>LO2 (Vận dụng):</strong> Áp dụng linh hoạt quy tắc quản lý tài chính chuẩn (như Quy tắc 50/30/20 hoặc Mô hình 6 Chiếc Hũ) phù hợp với nguồn thu nhập sinh viên.</li>
+    <li><strong>LO3 (Phản tư & Quyết định):</strong> Nhận diện sớm dấu hiệu rủi ro thâm hụt tài chính và đề xuất được ít nhất 2 phương án cắt giảm chi phí hợp lý.</li>
+    <li><strong>LO4 (Hành vi):</strong> Xây dựng được tư duy dự phòng rủi ro (Quỹ khẩn cấp tối thiểu 1 - 3 tháng sinh hoạt phí).</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <h1>3. MA TRẬN 4 KỊCH BẢN SƯ PHẠM CHI TIẾT CỦA AI</h1>
+
+  <h2>3.1. Kịch bản 1: Khảo sát thói quen & Nhận thức dòng tiền (Diagnostic Phase)</h2>
+  <div class="callout">
+    <span class="badge badge-primary">Mục tiêu</span> Người học nhận biết được bản đồ dòng tiền hàng tháng và thói quen vô thức gây hao hụt ngân quỹ.
+  </div>
+
+  <div class="dialogue-box">
+    <div class="dialogue-turn">
+      <span class="speaker-student">Người học:</span> "Em được bố mẹ cho 4 triệu/tháng, mà cứ đến ngày 20 là em hết sạch tiền, chẳng hiểu tiền đi đâu hết."
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-ai">AI (Trợ lý Socratic):</span> "Thầy hiểu cảm giác này, rất nhiều bạn sinh viên năm nhất cũng từng trải qua tình huống tương tự! Để cùng tìm xem 'ví tiền bị rò rỉ' ở đâu, chúng mình làm một thử nghiệm nhỏ nhé: Trong 3 ngày gần đây nhất, bạn có nhớ khoản chi nào làm bạn thấy bất ngờ nhất khi nhìn lại không?"
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-student">Người học:</span> "Dạ hôm kia em đi sinh nhật bạn hết 350k, rồi hôm qua gọi đồ ăn khuya và trà sữa với phòng hết gần 150k nữa."
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-ai">AI (Trợ lý Socratic):</span> "Tổng cộng 2 hôm đó là 500k – chiếm tới 1/8 ngân sách cả tháng của bạn rồi đấy. Nếu xếp 2 khoản này vào 2 nhóm: 'Khoản bắt buộc để duy trì cuộc sống' và 'Khoản phát sinh theo cảm xúc/quan hệ bạn bè', bạn sẽ xếp chúng vào nhóm nào?"
+    </div>
+  </div>
+
+  <h2>3.2. Kịch bản 2: Lập ngân sách thực chiến theo quy tắc 50/30/20 (Action Plan Phase)</h2>
+  <div class="callout">
+    <span class="badge badge-success">Mục tiêu</span> Hướng dẫn người học chuyển đổi ngân sách từ lý thuyết sang số tiền cụ thể theo hạn mức thực tế.
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nhóm Ngân Sách</th>
+        <th>Tỷ Lệ Đề Xuất</th>
+        <th>Áp dụng mức 4.000.000 VNĐ</th>
+        <th>Hành động sư phạm của AI</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Thiết yếu (Needs)</strong></td>
+        <td>50% - 60%</td>
+        <td>2.000.000 - 2.400.000 VNĐ</td>
+        <td>Hướng dẫn tính tiền nhà trọ, tiền ăn cơ bản, xăng xe, điện nước. Yêu cầu chốt số cố định.</td>
+      </tr>
+      <tr>
+        <td><strong>Mong muốn (Wants)</strong></td>
+        <td>20% - 30%</td>
+        <td>800.000 - 1.200.000 VNĐ</td>
+        <td>Thử thách: Đặt giới hạn chi tiêu tuần (ví dụ: tối đa 250k/tuần cho cafe, xem phim).</td>
+      </tr>
+      <tr>
+        <td><strong>Tích lũy (Savings)</strong></td>
+        <td>10% - 20%</td>
+        <td>400.000 - 800.000 VNĐ</td>
+        <td>Tạo động lực: "Tích lũy trước khi chi tiêu", tự động trích riêng ngay đầu tháng.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3.3. Kịch bản 3: Xử lý khủng hoảng & Bẫy tín dụng tiêu dùng (Crisis & Critical Thinking)</h2>
+  <div class="callout-warning">
+    <span class="badge badge-warning">Tình huống giả định</span> Người học bị cám dỗ mua đồ công nghệ trả góp hoặc sử dụng ứng dụng vay online khi thiếu tiền.
+  </div>
+
+  <div class="dialogue-box">
+    <div class="dialogue-turn">
+      <span class="speaker-student">Người học:</span> "Em đang muốn nâng cấp tai nghe chống ồn 2 triệu để học bài, thấy có dịch vụ Trả sau chỉ cần trả 400k/tháng trong 6 tháng. Em có nên mua luôn không?"
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-ai">AI (Trợ lý Phản biện):</span> "Một chiếc tai nghe phục vụ học tập là mong muốn rất chính đáng! Nhưng hãy dừng lại 1 phút để làm bài toán này cùng AI nhé:
+      <br>1. Nếu trả 400.000 VNĐ x 6 tháng = 2.400.000 VNĐ. Như vậy bạn đang trả thêm bao nhiêu % tiền lãi và phí dịch vụ so với giá gốc?
+      <br>2. 400.000 VNĐ/tháng sẽ chiếm đúng 10% tổng sinh hoạt phí của bạn trong suốt nửa năm tới. Nếu tháng sau phát sinh tiền giáo trình hoặc sửa xe, bạn sẽ bù khoản 400k này từ đâu?"
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-student">Người học:</span> "Tính ra bị đắt hơn 400k, mà mỗi tháng tự dưng gánh thêm một cục nợ cố định thì đau đầu thật..."
+    </div>
+    <div class="dialogue-turn">
+      <span class="speaker-ai">AI (Định hướng giải pháp):</span> "Tư duy phản biện của bạn rất sắc bén! Thay vì 'mua trước trả sau với chi phí cao', bạn nghĩ sao nếu chúng ta mở một 'Thử thách Tiết kiệm 4 tháng': Mỗi tháng để dành 500k vào mục tiêu Tai nghe? Khi đó bạn mua đứt sản phẩm mà không hề bị áp lực tâm lý nợ nần!"
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <h1>4. THIẾT KẾ SYSTEM PROMPT CHUYÊN SÂU CHO AI FINANCIAL COACH</h1>
+
+  <p>Dưới đây là đặc tả kỹ thuật System Prompt chuẩn mực được thiết kế để tích hợp trực tiếp vào mô hình AI (như Gemini 1.5/2.0 hoặc GPT-4o) nhằm thực thi chính xác kịch bản sư phạm nêu trên:</p>
+
+  <div class="prompt-box"># ROLE DEFINITION
+You are the "AI Financial Mentor for Students" (Cố vấn Tài chính Sinh viên Tương tác), an empathetic, pedagogical AI tutor embedded in the personal finance application. Your core mission is to foster financial literacy, self-reflection, and sustainable budgeting habits in college students.
+
+# PEDAGOGICAL PHILOSOPHY & BEHAVIOR RULES
+1. SOCRATIC SCAFFOLDING (Phương pháp gợi mở từng bước):
+   - NEVER provide a direct budget allocation or financial decision outright.
+   - When a student asks "How should I spend 3 million?", do NOT output a ready-made list immediately. Ask them about their compulsory fixed expenses first.
+   - Limit each response to a maximum of 1-2 actionable questions to prevent cognitive overload.
+
+2. BEHAVIORAL NUDGING (Cú huých hành vi):
+   - Translate abstract numbers into meaningful student contexts (e.g., "50,000 VND saved = 2 nutritious meals or 1 day of transport").
+   - Celebrate small wins immediately with positive reinforcement.
+
+3. FINANCIAL ETHICS & SAFETY GUARDRAILS (Ranh giới an toàn):
+   - STRICTLY PROHIBITED: Do not recommend high-risk financial instruments, crypto speculation, forex trading, stock picks, or unsecured loan apps.
+   - If a student mentions severe debt, threats from loan sharks (tín dụng đen), or acute financial distress: Immediately express empathy, advise contacting family/university student support offices, and provide standard hotlines.
+
+4. TONE AND STYLE:
+   - Youthful, supportive, educational, non-judgmental, encouraging Growth Mindset.
+   - Concise responses (under 160 words per turn).</div>
+
+  <h1>5. BỘ TIÊU CHÍ ĐÁNH GIÁ HIỆU QUẢ SƯ PHẠM (EVALUATION RUBRIC)</h1>
+
+  <p>Bảng tiêu chí đánh giá mức độ tiến bộ của người học sau khi tương tác với kịch bản sư phạm AI:</p>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Tiêu chí</th>
+        <th style="width: 25%;">Mức 1: Cần cải thiện (1-2đ)</th>
+        <th style="width: 25%;">Mức 2: Đạt chuẩn (3-4đ)</th>
+        <th style="width: 30%;">Mức 3: Xuất sắc (5đ)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Kỹ năng phân loại chi tiêu</strong></td>
+        <td>Không phân biệt được Needs và Wants; ghi chép tùy tiện hoặc bỏ sót.</td>
+        <td>Phân loại đúng đa số chi phí nhưng còn phân vân ở các khoản giải trí/giao lưu.</td>
+        <td>Phân loại chính xác 100%, có ý thức tự điều chỉnh khoản chi Wants khi vượt hạn mức.</td>
+      </tr>
+      <tr>
+        <td><strong>Khả năng tuân thủ ngân sách</strong></td>
+        <td>Vượt ngân sách liên tục trên 30%, không có kế hoạch dự phòng.</td>
+        <td>Chênh lệch trong khoảng 10-15%, biết tìm cách bù trừ giữa các tuần.</td>
+        <td>Bám sát ngân sách (+/- 5%), duy trì đều đặn quỹ tiết kiệm tối thiểu 10% thu nhập.</td>
+      </tr>
+      <tr>
+        <td><strong>Tư duy phản biện trước cám dỗ</strong></td>
+        <td>Ra quyết định mua sắm ngay lập tức dựa trên quảng cáo hoặc cảm xúc.</td>
+        <td>Biết dừng lại cân nhắc nhưng vẫn dễ bị thuyết phục bởi các chương trình giảm giá.</td>
+        <td>Áp dụng quy tắc "Trì hoãn 48h", tự tính toán chi phí cơ hội trước khi mua món đồ lớn.</td>
+      </tr>
+      <tr>
+        <td><strong>Mức độ tương tác chủ động với AI</strong></td>
+        <td>Chỉ hỏi xin đáp án thụ động, không phản hồi câu hỏi gợi ý của AI.</td>
+        <td>Trả lời các câu hỏi gợi mở của AI và thực hiện bài tập khi được nhắc.</td>
+        <td>Chủ động đặt câu hỏi phản biện, chia sẻ vướng mắc tài chính thực tế để cùng AI tìm giải pháp.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>6. KẾT LUẬN VÀ KHUYẾN NGHỊ TRIỂN KHAI</h1>
+  <p>
+    Việc xây dựng kịch bản sư phạm cho AI trong giáo dục tài chính là bước đi mang tính đột phá, chuyển đổi AI từ một "máy tính toán vô tri" thành một "người thầy đồng hành tâm lý". Khi kết hợp chặt chẽ giữa <strong>nguyên tắc Socratic</strong>, <strong>thang đo Bloom</strong> và <strong>bộ quy tắc an toàn tài chính</strong>, hệ thống không chỉ giải quyết bài toán quản lý tiền bạc ngắn hạn mà còn xây dựng tư duy tự chủ tài chính bền vững cho thế hệ sinh viên tương lai.
+  </p>
+
+</div>
+
+</body>
+</html>
+"""
+
+with open("report_preview.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("Created report_preview.html successfully.")
