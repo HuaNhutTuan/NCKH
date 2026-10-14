@@ -3,7 +3,6 @@ import { User, Lock, Eye, EyeOff, Mail, Check, AlertCircle, Loader2, X } from "l
 import { useAuth } from "./AuthContext";
 import { authApi } from "./api";
 import auroraBg from "./assets/aurora_bg.jpg";
-import SocialOAuthModal from "./components/ui/SocialOAuthModal";
 import "./Login.css";
 
 // Social SVGs
@@ -33,8 +32,66 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailStatus, setEmailStatus] = useState(null);
-  const [activeModal, setActiveModal] = useState(null); // "forgot" | "social" | null
+  const [activeModal, setActiveModal] = useState(null); // "forgot" | "social" | "oauth_config" | null
   const [socialProvider, setSocialProvider] = useState("");
+  const [inputOAuthId, setInputOAuthId] = useState("");
+
+  // Bắt access_token từ Google hoặc Facebook OAuth sau khi người dùng chọn tài khoản trên thiết bị
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token=")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const accessToken = params.get("access_token");
+      const state = params.get("state") || "Google";
+
+      if (accessToken) {
+        setLoading(true);
+        // Xóa hash trên thanh địa chỉ URL để giữ giao diện sạch đẹp
+        window.history.replaceState(null, "", window.location.pathname);
+
+        if (state === "Google") {
+          // Lấy thông tin tài khoản Google thật từ Google API
+          fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Không thể lấy thông tin tài khoản Google.");
+              return res.json();
+            })
+            .then(async (userInfo) => {
+              // Tự động đăng nhập vào Lộc App bằng tài khoản Google thật
+              const res = await authApi.socialDirectLogin({
+                email: userInfo.email,
+                name: userInfo.name || userInfo.email.split("@")[0],
+                avatar: userInfo.picture,
+                provider: "Google",
+              });
+              saveSession(res);
+            })
+            .catch((err) => {
+              setError(err.message || "Đăng nhập Google thất bại. Vui lòng thử lại.");
+            })
+            .finally(() => setLoading(false));
+        } else if (state === "Facebook") {
+          fetch(`https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`)
+            .then((res) => res.json())
+            .then(async (fbUser) => {
+              const res = await authApi.socialDirectLogin({
+                email: fbUser.email || `${fbUser.id}@facebook.com`,
+                name: fbUser.name,
+                avatar: fbUser.picture?.data?.url,
+                provider: "Facebook",
+              });
+              saveSession(res);
+            })
+            .catch((err) => {
+              setError(err.message || "Đăng nhập Facebook thất bại.");
+            })
+            .finally(() => setLoading(false));
+        }
+      }
+    }
+  }, []);
 
   // Trạng thái xác nhận mã liên kết mạng xã hội (Google / Facebook)
   const [socialStep, setSocialStep] = useState(1); // 1: nhập email, 2: chọn 1 trong 3 số xác minh danh tính
@@ -154,24 +211,69 @@ export default function Login() {
 
   async function handleSocialClick(providerName) {
     setSocialProvider(providerName);
-    // Kiểm tra cấu hình OAuth thật từ backend nếu có Client ID
-    try {
-      const cfg = await authApi.getOAuthConfig();
-      if (providerName === "Google" && cfg?.googleClientId) {
-        const redirectUri = encodeURIComponent(window.location.origin + "/");
-        const scope = encodeURIComponent("openid profile email");
-        window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${cfg.googleClientId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account`;
-        return;
-      }
-      if (providerName === "Facebook" && cfg?.facebookAppId) {
-        const redirectUri = encodeURIComponent(window.location.origin + "/");
-        window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${cfg.facebookAppId}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile`;
-        return;
-      }
-    } catch (_) {}
+    setError("");
 
-    // Mở giao diện Chọn tài khoản Google / Facebook chuẩn OAuth
-    setActiveModal("oauth_chooser");
+    try {
+      const cfg = await authApi.getOAuthConfig().catch(() => ({}));
+
+      if (providerName === "Google") {
+        const clientId =
+          localStorage.getItem("loc_google_client_id") ||
+          cfg?.googleClientId ||
+          import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+        if (!clientId) {
+          setInputOAuthId("");
+          setActiveModal("oauth_config");
+          return;
+        }
+
+        // Chuyển hướng trực tiếp đến trang Google OAuth 2.0 chính thức
+        // Tham số prompt=select_account yêu cầu Google hiển thị màn hình Chọn tài khoản trên thiết bị!
+        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        const scope = encodeURIComponent("openid email profile");
+        const nonce = Math.random().toString(36).substring(2);
+        window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId.trim()}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account&state=Google&nonce=${nonce}`;
+        return;
+      }
+
+      if (providerName === "Facebook") {
+        const appId =
+          localStorage.getItem("loc_facebook_app_id") ||
+          cfg?.facebookAppId ||
+          import.meta.env.VITE_FACEBOOK_APP_ID;
+
+        if (!appId) {
+          setInputOAuthId("");
+          setActiveModal("oauth_config");
+          return;
+        }
+
+        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId.trim()}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile&state=Facebook`;
+        return;
+      }
+    } catch (err) {
+      setError("Không thể kết nối dịch vụ đăng nhập. Vui lòng thử lại.");
+    }
+  }
+
+  function handleSaveAndRedirectOAuth(e) {
+    e.preventDefault();
+    if (!inputOAuthId || !inputOAuthId.trim()) return;
+
+    const cleanId = inputOAuthId.trim();
+    if (socialProvider === "Google") {
+      localStorage.setItem("loc_google_client_id", cleanId);
+      const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+      const scope = encodeURIComponent("openid email profile");
+      const nonce = Math.random().toString(36).substring(2);
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${cleanId}&redirect_uri=${redirectUri}&response_type=token&scope=${scope}&prompt=select_account&state=Google&nonce=${nonce}`;
+    } else {
+      localStorage.setItem("loc_facebook_app_id", cleanId);
+      const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+      window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${cleanId}&redirect_uri=${redirectUri}&response_type=token&scope=email,public_profile&state=Facebook`;
+    }
   }
 
   // Gửi email xác minh danh tính thực tế với con số xác nhận bí mật
@@ -643,16 +745,88 @@ export default function Login() {
         </div>
       )}
 
-      {/* Cửa sổ Chọn tài khoản Google / Facebook chuẩn giao diện OAuth */}
-      {activeModal === "oauth_chooser" && (
-        <SocialOAuthModal
-          provider={socialProvider}
-          onClose={() => setActiveModal(null)}
-          onSuccess={(sessionData) => {
-            saveSession(sessionData);
-            setActiveModal(null);
-          }}
-        />
+      {/* Modal Cấu hình OAuth 2.0 để mở trực tiếp tài khoản Google / Facebook trên thiết bị */}
+      {activeModal === "oauth_config" && (
+        <div className="aurora-modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="aurora-modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 16 }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: socialProvider === "Google" ? "rgba(66, 133, 244, 0.2)" : "rgba(24, 119, 242, 0.2)",
+                  border: `1px solid ${socialProvider === "Google" ? "rgba(66, 133, 244, 0.4)" : "rgba(24, 119, 242, 0.4)"}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: socialProvider === "Google" ? "#4285F4" : "#1877F2"
+                }}>
+                  {socialProvider === "Google" ? <GoogleIcon /> : <FacebookIcon />}
+                </div>
+                <span>Đăng nhập {socialProvider} OAuth 2.0</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5, margin: 0 }}>
+              Để mở trang Google chính thức và tự động nhận diện danh sách tài khoản Google <strong>đang đăng nhập trên thiết bị của bạn</strong>, hệ thống cần {socialProvider === "Google" ? "Google Client ID" : "Facebook App ID"}:
+            </p>
+
+            <div style={{
+              background: "rgba(38, 229, 220, 0.08)",
+              border: "1px solid rgba(38, 229, 220, 0.25)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: "rgba(255,255,255,0.85)"
+            }}>
+              {socialProvider === "Google" ? (
+                <>
+                  1. Truy cập <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" style={{ color: "#38D8D8", fontWeight: 600 }}>Google Cloud Console</a>.<br />
+                  2. Tạo <strong>OAuth Client ID</strong> (Web Application), thêm <code>{window.location.origin}</code> vào <em>Authorized JavaScript origins</em> & <em>Authorized redirect URIs</em>.<br />
+                  3. Dán <strong>Client ID</strong> vào ô bên dưới:
+                </>
+              ) : (
+                <>
+                  1. Truy cập <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" style={{ color: "#38D8D8", fontWeight: 600 }}>Meta for Developers</a>.<br />
+                  2. Lấy <strong>Facebook App ID</strong> và dán vào bên dưới:
+                </>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveAndRedirectOAuth} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="aurora-input-wrapper">
+                <input
+                  type="text"
+                  placeholder={socialProvider === "Google" ? "VD: 123456789-abc.apps.googleusercontent.com" : "Nhập Facebook App ID"}
+                  className="aurora-input"
+                  style={{ fontSize: 12.5 }}
+                  value={inputOAuthId}
+                  onChange={(e) => setInputOAuthId(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="aurora-submit-btn"
+                disabled={!inputOAuthId.trim()}
+                style={{ marginTop: 2 }}
+              >
+                MỞ TRANG {socialProvider.toUpperCase()} OAUTH TRÊN THIẾT BỊ
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
