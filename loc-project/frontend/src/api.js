@@ -30,6 +30,10 @@ export const authApi = {
     request("/auth/profile", { method: "PUT", token, body: data }),
   changePassword: (token, data) =>
     request("/auth/change-password", { method: "PUT", token, body: data }),
+  sendSocialOtp: (email, provider) =>
+    request("/auth/social/send-otp", { method: "POST", body: { email, provider } }),
+  verifySocialOtp: (email, code, provider) =>
+    request("/auth/social/verify-otp", { method: "POST", body: { email, code, provider } }),
 };
 
 export const transactionsApi = {

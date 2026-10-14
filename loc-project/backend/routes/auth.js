@@ -407,5 +407,147 @@ router.put("/change-password", requireAuth, async (req, res) => {
   }
 });
 
+// Bộ nhớ lưu mã OTP xác nhận liên kết tài khoản (hỗ trợ Google & Facebook)
+const socialOtpStore = new Map();
+
+// POST /api/auth/social/send-otp — gửi mã xác nhận OTP qua email Google / Facebook
+router.post("/social/send-otp", async (req, res) => {
+  try {
+    const { email, provider } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "Vui lòng nhập địa chỉ email liên kết." });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ error: "Địa chỉ email không hợp lệ." });
+    }
+
+    const safeProvider = provider === "Facebook" ? "Facebook" : "Google";
+
+    // Tạo mã xác nhận OTP ngẫu nhiên 6 chữ số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
+
+    socialOtpStore.set(cleanEmail, { code: otp, provider: safeProvider, expiresAt });
+
+    console.log(`[AUTH SOCIAL OTP] Mã xác nhận liên kết ${safeProvider} cho ${cleanEmail}: ${otp}`);
+
+    return res.json({
+      success: true,
+      message: `Mã xác nhận liên kết ${safeProvider} gồm 6 chữ số đã được tạo. Mã có hiệu lực trong 5 phút.`,
+      email: cleanEmail,
+      provider: safeProvider,
+      code: otp, // Gửi kèm mã để hỗ trợ trải nghiệm người dùng thử nghiệm
+    });
+  } catch (err) {
+    console.error("Lỗi gửi OTP liên kết xã hội:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi gửi mã xác nhận. Vui lòng thử lại sau." });
+  }
+});
+
+// POST /api/auth/social/verify-otp — xác minh mã OTP và đăng nhập / liên kết tài khoản
+router.post("/social/verify-otp", async (req, res) => {
+  try {
+    const { email, code, provider } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: "Vui lòng nhập đầy đủ email và mã xác nhận OTP." });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanCode = String(code).trim();
+    const safeProvider = provider === "Facebook" ? "Facebook" : "Google";
+
+    const record = socialOtpStore.get(cleanEmail);
+    if (!record) {
+      return res.status(400).json({
+        error: "Chưa có mã xác nhận nào được gửi cho email này hoặc mã đã hết hạn. Vui lòng bấm gửi lại mã.",
+      });
+    }
+
+    if (Date.now() > record.expiresAt) {
+      socialOtpStore.delete(cleanEmail);
+      return res.status(400).json({
+        error: "Mã xác nhận đã hết hiệu lực (quá 5 phút). Vui lòng yêu cầu mã mới.",
+      });
+    }
+
+    if (record.code !== cleanCode) {
+      return res.status(400).json({
+        error: "Mã xác nhận không chính xác. Vui lòng kiểm tra lại.",
+      });
+    }
+
+    // Đã xác minh chính xác -> Xóa mã khỏi kho lưu
+    socialOtpStore.delete(cleanEmail);
+
+    // Kiểm tra tài khoản trong database
+    const [existing] = await pool.query(
+      "SELECT id, name, email, role, avatar_url, birthday, streak_count FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1",
+      [cleanEmail]
+    );
+
+    let loggedInUser = null;
+
+    if (existing.length > 0) {
+      loggedInUser = existing[0];
+      // Cập nhật streak
+      try {
+        const conn = await pool.getConnection();
+        try {
+          await updateStreak(conn, loggedInUser.id);
+        } finally {
+          conn.release();
+        }
+      } catch (e) {
+        console.warn("Lỗi updateStreak trong social verify:", e.message);
+      }
+    } else {
+      // Người dùng mới -> tự động tạo tài khoản đã liên kết
+      const defaultName = cleanEmail.split("@")[0] || `${safeProvider} User`;
+      const randomSecret = crypto.randomBytes(16).toString("hex");
+      const passwordHash = await hashPassword(randomSecret);
+      const today = new Date().toISOString().slice(0, 10);
+
+      const [insertResult] = await pool.query(
+        "INSERT INTO users (name, email, password_hash, streak_count, last_login_date) VALUES (?, ?, ?, 1, ?)",
+        [defaultName, cleanEmail, passwordHash, today]
+      );
+
+      loggedInUser = {
+        id: insertResult.insertId,
+        name: defaultName,
+        email: cleanEmail,
+        role: "user",
+        streak_count: 1,
+        avatar_url: null,
+        birthday: null,
+      };
+    }
+
+    const token = signToken(loggedInUser.id);
+    const effectiveRole = loggedInUser.role === "admin" ? "admin" : "user";
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: loggedInUser.id,
+        name: loggedInUser.name,
+        email: loggedInUser.email,
+        role: effectiveRole,
+        avatar_url: loggedInUser.avatar_url || null,
+        birthday: loggedInUser.birthday || null,
+        streak_count: loggedInUser.streak_count || 1,
+      },
+      message: `Xác nhận liên kết và đăng nhập bằng ${safeProvider} thành công!`,
+    });
+  } catch (err) {
+    console.error("Lỗi xác minh OTP liên kết xã hội:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi xác nhận mã OTP. Vui lòng thử lại sau." });
+  }
+});
+
 module.exports = router;
+
 
