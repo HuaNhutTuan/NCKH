@@ -217,16 +217,12 @@ export default function Login() {
       const cfg = await authApi.getOAuthConfig().catch(() => ({}));
 
       if (providerName === "Google") {
+        const DEFAULT_GOOGLE_CLIENT_ID = "470490421827-2mv39c2mv6s03jt13tfqmmskomui6u1h.apps.googleusercontent.com";
         const clientId =
           localStorage.getItem("loc_google_client_id") ||
           cfg?.googleClientId ||
-          import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-        if (!clientId) {
-          setInputOAuthId("");
-          setActiveModal("oauth_config");
-          return;
-        }
+          import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+          DEFAULT_GOOGLE_CLIENT_ID;
 
         // Chuyển hướng trực tiếp đến trang Google OAuth 2.0 chính thức
         // Tham số prompt=select_account yêu cầu Google hiển thị màn hình Chọn tài khoản trên thiết bị!
