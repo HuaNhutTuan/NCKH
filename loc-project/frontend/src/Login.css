@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    Aurora Glassmorphism Login Theme
    Matches the enchanted night aurora & frosted glass UI
    ========================================================= */
@@ -411,3 +411,49 @@
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* 3-Number Google-style Identity Verification */
+.aurora-identity-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 14px 0 6px;
+}
+
+.aurora-identity-num-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(56, 216, 216, 0.4);
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.aurora-identity-num-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.08);
+  background: rgba(38, 229, 220, 0.22);
+  border-color: #38D8D8;
+  box-shadow: 0 10px 24px rgba(38, 229, 220, 0.35);
+  color: #38D8D8;
+}
+
+.aurora-identity-num-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.aurora-identity-num-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+

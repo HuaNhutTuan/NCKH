@@ -407,10 +407,28 @@ router.put("/change-password", requireAuth, async (req, res) => {
   }
 });
 
-// Bộ nhớ lưu mã OTP xác nhận liên kết tài khoản (hỗ trợ Google & Facebook)
+const { sendIdentityEmail } = require("../mailer");
+
+// Hàm sinh thử thách xác minh danh tính 3 con số (1 con số đúng + 2 con số gây nhiễu)
+function generateIdentityChallenge() {
+  const correctNumber = Math.floor(10 + Math.random() * 90);
+  const set = new Set([correctNumber]);
+  while (set.size < 3) {
+    set.add(Math.floor(10 + Math.random() * 90));
+  }
+  const options = Array.from(set);
+  // Xáo trộn ngẫu nhiên (Fisher-Yates)
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return { correctNumber, options };
+}
+
+// Bộ nhớ lưu phiên xác minh danh tính tài khoản (hỗ trợ Google & Facebook)
 const socialOtpStore = new Map();
 
-// POST /api/auth/social/send-otp — gửi mã xác nhận OTP qua email Google / Facebook
+// POST /api/auth/social/send-otp — gửi con số xác minh danh tính qua email thực tế
 router.post("/social/send-otp", async (req, res) => {
   try {
     const { email, provider } = req.body;
@@ -425,60 +443,74 @@ router.post("/social/send-otp", async (req, res) => {
 
     const safeProvider = provider === "Facebook" ? "Facebook" : "Google";
 
-    // Tạo mã xác nhận OTP ngẫu nhiên 6 chữ số
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Sinh con số xác nhận bí mật và 3 lựa chọn
+    const { correctNumber, options } = generateIdentityChallenge();
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
 
-    socialOtpStore.set(cleanEmail, { code: otp, provider: safeProvider, expiresAt });
+    socialOtpStore.set(cleanEmail, {
+      correctNumber,
+      options,
+      provider: safeProvider,
+      expiresAt,
+    });
 
-    console.log(`[AUTH SOCIAL OTP] Mã xác nhận liên kết ${safeProvider} cho ${cleanEmail}: ${otp}`);
+    console.log(`[AUTH SOCIAL IDENTITY] Gửi số xác nhận ${correctNumber} (các lựa chọn: ${options.join(", ")}) cho ${cleanEmail} qua ${safeProvider}`);
+
+    // Gửi email thực tế đến hòm thư người dùng
+    const mailResult = await sendIdentityEmail(cleanEmail, correctNumber, safeProvider);
 
     return res.json({
       success: true,
-      message: `Mã xác nhận liên kết ${safeProvider} gồm 6 chữ số đã được tạo. Mã có hiệu lực trong 5 phút.`,
+      message: mailResult.sent
+        ? `Đã gửi số xác minh danh tính đến email thực tế ${cleanEmail}. Vui lòng mở email và bấm chọn đúng con số đó.`
+        : `Đã khởi tạo xác minh danh tính cho email ${cleanEmail}. (Chưa cấu hình mật khẩu SMTP Gmail, mã thử nghiệm: ${correctNumber})`,
       email: cleanEmail,
       provider: safeProvider,
-      code: otp, // Gửi kèm mã để hỗ trợ trải nghiệm người dùng thử nghiệm
+      options, // 3 con số để người dùng bấm chọn trên giao diện
+      emailSent: mailResult.sent,
+      correctNumber, // Hỗ trợ hiển thị gợi ý / thử nghiệm nếu server chưa có SMTP_PASS
     });
   } catch (err) {
-    console.error("Lỗi gửi OTP liên kết xã hội:", err);
-    return res.status(500).json({ error: "Có lỗi xảy ra khi gửi mã xác nhận. Vui lòng thử lại sau." });
+    console.error("Lỗi gửi email xác minh danh tính:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi gửi email xác minh. Vui lòng thử lại sau." });
   }
 });
 
-// POST /api/auth/social/verify-otp — xác minh mã OTP và đăng nhập / liên kết tài khoản
+// POST /api/auth/social/verify-otp — xác minh con số người dùng bấm chọn và đăng nhập
 router.post("/social/verify-otp", async (req, res) => {
   try {
-    const { email, code, provider } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ error: "Vui lòng nhập đầy đủ email và mã xác nhận OTP." });
-    }
-
-    const cleanEmail = String(email).trim().toLowerCase();
-    const cleanCode = String(code).trim();
+    const { email, selectedNumber, code, provider } = req.body;
+    const cleanEmail = String(email || "").trim().toLowerCase();
     const safeProvider = provider === "Facebook" ? "Facebook" : "Google";
+
+    if (!cleanEmail) {
+      return res.status(400).json({ error: "Vui lòng cung cấp email xác nhận." });
+    }
 
     const record = socialOtpStore.get(cleanEmail);
     if (!record) {
       return res.status(400).json({
-        error: "Chưa có mã xác nhận nào được gửi cho email này hoặc mã đã hết hạn. Vui lòng bấm gửi lại mã.",
+        error: "Phiên xác minh đã hết hạn hoặc chưa được tạo. Vui lòng bấm gửi lại mã xác minh.",
       });
     }
 
     if (Date.now() > record.expiresAt) {
       socialOtpStore.delete(cleanEmail);
       return res.status(400).json({
-        error: "Mã xác nhận đã hết hiệu lực (quá 5 phút). Vui lòng yêu cầu mã mới.",
+        error: "Phiên xác minh đã quá 5 phút và hết hiệu lực. Vui lòng bấm gửi lại.",
       });
     }
 
-    if (record.code !== cleanCode) {
+    // Giá trị người dùng chọn
+    const userChoice = Number(selectedNumber !== undefined ? selectedNumber : code);
+
+    if (userChoice !== record.correctNumber) {
       return res.status(400).json({
-        error: "Mã xác nhận không chính xác. Vui lòng kiểm tra lại.",
+        error: `Con số bạn chọn (${userChoice}) không khớp với con số được gửi trong email! Vui lòng mở email và bấm chọn đúng con số.`,
       });
     }
 
-    // Đã xác minh chính xác -> Xóa mã khỏi kho lưu
+    // Đã chọn chính xác con số xác minh -> Xóa phiên khỏi kho lưu
     socialOtpStore.delete(cleanEmail);
 
     // Kiểm tra tài khoản trong database
@@ -491,7 +523,6 @@ router.post("/social/verify-otp", async (req, res) => {
 
     if (existing.length > 0) {
       loggedInUser = existing[0];
-      // Cập nhật streak
       try {
         const conn = await pool.getConnection();
         try {
@@ -503,7 +534,7 @@ router.post("/social/verify-otp", async (req, res) => {
         console.warn("Lỗi updateStreak trong social verify:", e.message);
       }
     } else {
-      // Người dùng mới -> tự động tạo tài khoản đã liên kết
+      // Người dùng mới -> tự động tạo tài khoản đã xác minh
       const defaultName = cleanEmail.split("@")[0] || `${safeProvider} User`;
       const randomSecret = crypto.randomBytes(16).toString("hex");
       const passwordHash = await hashPassword(randomSecret);
@@ -540,14 +571,15 @@ router.post("/social/verify-otp", async (req, res) => {
         birthday: loggedInUser.birthday || null,
         streak_count: loggedInUser.streak_count || 1,
       },
-      message: `Xác nhận liên kết và đăng nhập bằng ${safeProvider} thành công!`,
+      message: `Xác nhận danh tính liên kết ${safeProvider} thành công!`,
     });
   } catch (err) {
-    console.error("Lỗi xác minh OTP liên kết xã hội:", err);
-    return res.status(500).json({ error: "Có lỗi xảy ra khi xác nhận mã OTP. Vui lòng thử lại sau." });
+    console.error("Lỗi xác minh danh tính liên kết xã hội:", err);
+    return res.status(500).json({ error: "Có lỗi xảy ra khi xác minh danh tính. Vui lòng thử lại sau." });
   }
 });
 
 module.exports = router;
+
 
 

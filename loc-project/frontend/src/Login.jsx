@@ -36,13 +36,15 @@ export default function Login() {
   const [socialProvider, setSocialProvider] = useState("");
 
   // Trạng thái xác nhận mã liên kết mạng xã hội (Google / Facebook)
-  const [socialStep, setSocialStep] = useState(1); // 1: nhập email, 2: nhập mã xác nhận OTP
+  const [socialStep, setSocialStep] = useState(1); // 1: nhập email, 2: chọn 1 trong 3 số xác minh danh tính
   const [socialEmail, setSocialEmail] = useState("");
-  const [socialOtp, setSocialOtp] = useState("");
   const [socialLoading, setSocialLoading] = useState(false);
   const [socialError, setSocialError] = useState("");
   const [socialSuccessMsg, setSocialSuccessMsg] = useState("");
-  const [socialGeneratedCode, setSocialGeneratedCode] = useState("");
+  const [socialOptions, setSocialOptions] = useState([]); // 3 con số lựa chọn
+  const [socialCorrectNumber, setSocialCorrectNumber] = useState(null); // số đúng
+  const [emailSent, setEmailSent] = useState(false); // trạng thái đã gửi email thực tế
+  const [selectedNum, setSelectedNum] = useState(null); // số người dùng vừa bấm
   const [resendCountdown, setResendCountdown] = useState(0);
 
   // Tải lại email đã ghi nhớ
@@ -153,15 +155,17 @@ export default function Login() {
     setSocialProvider(providerName);
     setSocialStep(1);
     setSocialEmail(form.email || "");
-    setSocialOtp("");
     setSocialError("");
     setSocialSuccessMsg("");
-    setSocialGeneratedCode("");
+    setSocialOptions([]);
+    setSocialCorrectNumber(null);
+    setEmailSent(false);
+    setSelectedNum(null);
     setResendCountdown(0);
     setActiveModal("social");
   }
 
-  // Gửi mã OTP xác nhận liên kết Google / Facebook
+  // Gửi email xác minh danh tính thực tế với con số xác nhận bí mật
   async function handleSendSocialOtp(e) {
     if (e) e.preventDefault();
     setSocialError("");
@@ -177,37 +181,32 @@ export default function Login() {
     setSocialLoading(true);
     try {
       const res = await authApi.sendSocialOtp(cleanEmail, socialProvider);
-      setSocialGeneratedCode(res.code || "");
-      setSocialSuccessMsg(res.message || "Mã xác nhận đã được gửi thành công!");
+      setSocialOptions(res.options || []);
+      setSocialCorrectNumber(res.correctNumber);
+      setEmailSent(!!res.emailSent);
+      setSocialSuccessMsg(res.message || "Đã gửi email xác minh danh tính thành công!");
       setSocialStep(2);
       setResendCountdown(60);
     } catch (err) {
-      setSocialError(err.message || "Không thể gửi mã xác nhận. Vui lòng thử lại.");
+      setSocialError(err.message || "Không thể gửi email xác minh. Vui lòng thử lại.");
     } finally {
       setSocialLoading(false);
     }
   }
 
-  // Xác thực mã OTP và đăng nhập vào hệ thống
-  async function handleVerifySocialOtp(e) {
-    if (e) e.preventDefault();
+  // Bấm chọn đúng 1 trong 3 con số giống phương thức xác minh Google Prompt
+  async function handleSelectIdentityNumber(chosenNumber) {
+    setSelectedNum(chosenNumber);
     setSocialError("");
-
-    const cleanEmail = socialEmail.trim().toLowerCase();
-    const cleanCode = socialOtp.trim();
-
-    if (!cleanCode || cleanCode.length < 6) {
-      setSocialError("Vui lòng nhập đủ 6 chữ số mã xác nhận OTP.");
-      return;
-    }
-
     setSocialLoading(true);
+
     try {
-      const res = await authApi.verifySocialOtp(cleanEmail, cleanCode, socialProvider);
+      const cleanEmail = socialEmail.trim().toLowerCase();
+      const res = await authApi.verifySocialOtp(cleanEmail, chosenNumber, socialProvider);
       saveSession(res);
       setActiveModal(null);
     } catch (err) {
-      setSocialError(err.message || "Mã xác nhận không hợp lệ hoặc đã hết hạn.");
+      setSocialError(err.message || `Số ${chosenNumber} không khớp với email! Vui lòng kiểm tra lại email.`);
     } finally {
       setSocialLoading(false);
     }
@@ -525,73 +524,61 @@ export default function Login() {
                 </button>
               </form>
             ) : (
-              /* BƯỚC 2: Nhập mã xác nhận OTP 6 chữ số */
-              <form onSubmit={handleVerifySocialOtp} style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+              /* BƯỚC 2: Bấm đúng 1 trong 3 con số giống cách Google xác minh danh tính */
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
-                  Mã xác nhận 6 số đã được gửi tới:
+                  Đã gửi số xác minh danh tính đến email:
                   <div style={{ color: "#38D8D8", fontWeight: 600, wordBreak: "break-all", marginTop: 2 }}>
                     📧 {socialEmail}
                   </div>
                 </div>
 
-                {/* Badge thông báo mã OTP thử nghiệm */}
-                {socialGeneratedCode && (
+                <div style={{
+                  fontSize: 12.5,
+                  color: "rgba(255,255,255,0.82)",
+                  lineHeight: 1.45,
+                  background: "rgba(255,255,255,0.06)",
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.12)"
+                }}>
+                  👉 Mở hộp thư email (hoặc thư rác), kiểm tra con số được gửi và <strong>bấm chọn con số đó</strong> dưới đây:
+                </div>
+
+                {/* 3 nút số to nổi bật giống phương thức Google Prompt */}
+                <div className="aurora-identity-options-row">
+                  {socialOptions.map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      className="aurora-identity-num-btn"
+                      onClick={() => handleSelectIdentityNumber(num)}
+                      disabled={socialLoading}
+                      title={`Bấm chọn con số ${num}`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Trạng thái đang xác minh con số */}
+                {socialLoading && (
                   <div style={{
-                    background: "rgba(38, 229, 220, 0.12)",
-                    border: "1px dashed rgba(38, 229, 220, 0.45)",
-                    borderRadius: 10,
-                    padding: "9px 12px",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    fontSize: 12.5
+                    justifyContent: "center",
+                    gap: 8,
+                    color: "#38D8D8",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    margin: "2px 0"
                   }}>
-                    <div>
-                      <span style={{ color: "rgba(255,255,255,0.7)" }}>Mã xác nhận: </span>
-                      <strong style={{ color: "#38D8D8", fontSize: 16, letterSpacing: 2, marginLeft: 4 }}>
-                        {socialGeneratedCode}
-                      </strong>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSocialOtp(socialGeneratedCode)}
-                      style={{
-                        background: "rgba(38, 229, 220, 0.22)",
-                        border: "1px solid rgba(38, 229, 220, 0.55)",
-                        borderRadius: 6,
-                        color: "#38D8D8",
-                        padding: "3px 9px",
-                        fontSize: 11.5,
-                        cursor: "pointer",
-                        fontWeight: 600
-                      }}
-                    >
-                      Điền nhanh
-                    </button>
+                    <Loader2 size={16} className="animate-spin" style={{ animation: "spin 1s linear infinite" }} />
+                    <span>Đang xác minh số {selectedNum}...</span>
                   </div>
                 )}
 
-                {/* Trường nhập mã OTP */}
-                <div className="aurora-input-wrapper">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="MÃ 6 CHỮ SỐ"
-                    className="aurora-input"
-                    style={{
-                      textAlign: "center",
-                      fontSize: 20,
-                      fontWeight: 700,
-                      letterSpacing: 6,
-                      color: "#38D8D8"
-                    }}
-                    value={socialOtp}
-                    onChange={(e) => setSocialOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    autoFocus
-                    required
-                  />
-                </div>
-
+                {/* Thông báo lỗi khi chọn sai số */}
                 {socialError && (
                   <div className="aurora-error-badge">
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -601,8 +588,23 @@ export default function Login() {
                   </div>
                 )}
 
-                {/* Các nút hành động phụ: Đổi email / Gửi lại mã */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginTop: -2 }}>
+                {/* Gợi ý thử nghiệm khi chưa cấu hình SMTP */}
+                {socialCorrectNumber && !emailSent && (
+                  <div style={{
+                    background: "rgba(217, 164, 65, 0.14)",
+                    border: "1px dashed rgba(217, 164, 65, 0.45)",
+                    borderRadius: 8,
+                    padding: "7px 10px",
+                    fontSize: 11.5,
+                    color: "#F6C76E",
+                    lineHeight: 1.4
+                  }}>
+                    💡 <em>(Chưa điền SMTP_PASS Gmail):</em> Con số được gửi là <strong>{socialCorrectNumber}</strong>. Bấm vào số này ở trên để xác nhận!
+                  </div>
+                )}
+
+                {/* Hàng đổi email / gửi lại mã */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, marginTop: 2 }}>
                   <span
                     onClick={() => {
                       setSocialStep(1);
@@ -622,27 +624,11 @@ export default function Login() {
                       onClick={handleSendSocialOtp}
                       style={{ color: "#38D8D8", cursor: "pointer", fontWeight: 600, textDecoration: "underline" }}
                     >
-                      Gửi lại mã OTP
+                      Gửi lại email
                     </span>
                   )}
                 </div>
-
-                <button
-                  type="submit"
-                  className="aurora-submit-btn"
-                  disabled={socialLoading || socialOtp.trim().length !== 6}
-                  style={{ marginTop: 4 }}
-                >
-                  {socialLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" style={{ animation: "spin 1s linear infinite" }} />
-                      <span>ĐANG XÁC NHẬN...</span>
-                    </>
-                  ) : (
-                    "XÁC NHẬN & LIÊN KẾT ĐĂNG NHẬP"
-                  )}
-                </button>
-              </form>
+              </div>
             )}
           </div>
         </div>
