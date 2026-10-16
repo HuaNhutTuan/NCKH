@@ -1019,29 +1019,18 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <button
-          onClick={onAdd}
-          className="btn-gold"
-          style={{
-            flex: 1.1, background: T.gold, color: "#3A2A08", border: "none",
-            borderRadius: 12, padding: "11px 8px", fontWeight: 600, fontSize: 13, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap",
-          }}
-        >
-          <Plus size={16} style={{ flexShrink: 0 }} /> Thêm giao dịch
-        </button>
+      <div style={{ marginTop: 12 }}>
         <button
           onClick={onOpenVoice}
           className="btn-teal"
           style={{
-            flex: 1, background: T.teal, color: "#fff", border: "none",
-            borderRadius: 12, padding: "11px 8px", fontWeight: 600, fontSize: 13, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 5, whiteSpace: "nowrap",
+            width: "100%", background: T.teal, color: "#fff", border: "none",
+            borderRadius: 12, padding: "12px 16px", fontWeight: 600, fontSize: 14, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap",
           }}
-          title="Nói để cộng/trừ trực tiếp vào giao dịch ngay lập tức"
+          title="Nói để thêm giao dịch bằng giọng nói"
         >
-          <Mic size={16} style={{ flexShrink: 0 }} /> Ghi giọng nói
+          <Mic size={18} style={{ flexShrink: 0 }} /> Thêm giao dịch bằng giọng nói
         </button>
       </div>
 
