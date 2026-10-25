@@ -19,6 +19,7 @@ import ConfirmModal from "./components/ui/ConfirmModal";
 import OnboardingModal from "./components/onboarding/OnboardingModal";
 import EditTxModal from "./components/modals/EditTxModal";
 import ProfileModal from "./components/ui/ProfileModal";
+import LearnTab from "./components/learn/LearnTab";
 import { formatThousands, parseThousands, handleNumericChange } from "./utils/format";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
@@ -159,7 +160,7 @@ export default function LocApp() {
   const [dataLoading, setDataLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [initialAddTab, setInitialAddTab] = useState("manual");
-  const [form, setForm] = useState({ type: "expense", cat: "food", amount: "", note: "", date: todayStr() });
+  const [form, setForm] = useState({ type: "expense", cat: "food", nature: "need", amount: "", note: "", date: todayStr() });
   const [editingTx, setEditingTx] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [toast, setToast] = useState(null);
@@ -180,7 +181,7 @@ export default function LocApp() {
               cleanDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(d);
             }
           }
-          return { ...t, cat: t.category, amount: Number(t.amount), date: cleanDate };
+          return { ...t, cat: t.category, amount: Number(t.amount), nature: t.nature || (["entertainment", "shopping"].includes(t.category) ? "want" : "need"), date: cleanDate };
         });
         setTransactions(loadedTxs);
         setBudgets(budgetData.budgets);
@@ -222,7 +223,27 @@ export default function LocApp() {
       byCat[t.cat] = (byCat[t.cat] || 0) + t.amount;
     });
     const balance = transactions.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
-    return { income, expense, byCat, balance, monthTx };
+    // Phân loại giáo dục Nhu cầu (Needs) vs Mong muốn (Wants) theo chuẩn 50/30/20
+    const monthExpenses = monthTx.filter((t) => t.type === "expense");
+    const needsExpense = monthExpenses.filter((t) => t.nature !== "want").reduce((s, t) => s + t.amount, 0);
+    const wantsExpense = monthExpenses.filter((t) => t.nature === "want").reduce((s, t) => s + t.amount, 0);
+    const needsPercent = expense > 0 ? Math.round((needsExpense / expense) * 100) : 50;
+    const wantsPercent = expense > 0 ? Math.round((wantsExpense / expense) * 100) : 0;
+
+    let disciplineScore = 80;
+    if (expense > 0) {
+      if (wantsPercent > 45) disciplineScore -= 30;
+      else if (wantsPercent > 35) disciplineScore -= 15;
+      else if (wantsPercent <= 30) disciplineScore += 10;
+    }
+    if (balance < 0) disciplineScore -= 20;
+    else if (balance > 500000) disciplineScore += 10;
+    disciplineScore = Math.max(20, Math.min(100, disciplineScore));
+
+    return {
+      income, expense, byCat, balance, monthTx,
+      needsExpense, wantsExpense, needsPercent, wantsPercent, disciplineScore
+    };
   }, [transactions]);
 
   const pieData = Object.entries(stats.byCat).map(([id, val]) => ({
@@ -329,17 +350,19 @@ export default function LocApp() {
   async function addTransaction() {
     const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) return;
+    const txNature = form.nature || (["entertainment", "shopping"].includes(form.cat) ? "want" : "need");
     const payload = {
       type: form.type,
       category: form.cat,
       amount: amt,
+      nature: txNature,
       note: form.note || "(không ghi chú)",
       date: form.date,
     };
     try {
       const { transaction } = await transactionsApi.create(token, payload);
-      setTransactions((prev) => [{ ...transaction, cat: transaction.category, amount: Number(transaction.amount) }, ...prev]);
-      setForm({ type: "expense", cat: "food", amount: "", note: "", date: todayStr() });
+      setTransactions((prev) => [{ ...transaction, cat: transaction.category, nature: transaction.nature || txNature, amount: Number(transaction.amount) }, ...prev]);
+      setForm({ type: "expense", cat: "food", nature: "need", amount: "", note: "", date: todayStr() });
       setShowAdd(false);
       setToast({ message: `Đã lưu giao dịch: ${fmtVND(amt)}!`, type: "success" });
     } catch (err) {
@@ -353,12 +376,13 @@ export default function LocApp() {
         type: updatedTx.type,
         category: updatedTx.category || updatedTx.cat,
         amount: updatedTx.amount,
+        nature: updatedTx.nature || "need",
         note: updatedTx.note,
         date: updatedTx.date,
       });
       const saved = res.transaction;
       setTransactions((prev) =>
-        prev.map((t) => (t.id === saved.id ? { ...saved, cat: saved.category, amount: Number(saved.amount) } : t))
+        prev.map((t) => (t.id === saved.id ? { ...saved, cat: saved.category, nature: saved.nature || updatedTx.nature || "need", amount: Number(saved.amount) } : t))
       );
       setToast({ message: "Đã cập nhật giao dịch thành công!", type: "success" });
     } catch (err) {
@@ -462,12 +486,21 @@ export default function LocApp() {
       .map(([id, val]) => `${catMeta(id).label}: ${fmtVND(val)}`)
       .join(", ");
 
-    const systemPrompt = `Bạn là "Tuấn", một trợ lý AI đồng hành giáo dục tài chính cá nhân dành riêng cho sinh viên Việt Nam, tích hợp trong ứng dụng quản lý chi tiêu.
-Phong cách: gần gũi, khích lệ, nói tiếng Việt tự nhiên, ngắn gọn (dưới 150 từ trừ khi được yêu cầu chi tiết), dùng ví dụ cụ thể, không phán xét.
-Mục tiêu: dạy kiến thức tài chính nền tảng (ngân sách, tiết kiệm, nợ, lãi suất, thói quen chi tiêu) và đưa lời khuyên thực tế phù hợp với thu nhập sinh viên (thường thấp, không ổn định).
-Không đưa lời khuyên đầu tư cụ thể (không gợi ý mã cổ phiếu, tiền mã hoá cụ thể) hay tư vấn pháp lý/thuế; nếu được hỏi, hãy giải thích khái niệm chung và khuyên tìm chuyên gia.
-Dữ liệu tài chính hiện tại của người dùng trong tháng này: Thu nhập ${fmtVND(stats.income)}, Chi tiêu ${fmtVND(stats.expense)}, Số dư hiện tại ${fmtVND(stats.balance)}. Top danh mục chi tiêu: ${topCats || "chưa có dữ liệu"}. ${overBudgetCats.length ? "Đã vượt ngân sách ở: " + overBudgetCats.join(", ") + "." : "Chưa vượt ngân sách nào."}
-Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá nhân hoá, nhưng đừng liệt kê lại toàn bộ số liệu nếu người dùng không hỏi trực tiếp.`;
+    const systemPrompt = `Bạn là "Tuấn", Cố vấn Giáo dục Tài chính Cá nhân đồng hành (Peer-Mentor) theo phương pháp gợi mở Socratic dành cho sinh viên Việt Nam (Đề tài Nghiên cứu Khoa học).
+HÌNH TƯỢNG SƯ PHẠM & NGUYÊN TẮC SOCRATIC:
+1. KHÔNG GIẢI BÀI HỘ: Khi sinh viên hỏi nên chi tiêu thế nào hay có nên mua gì không, không lập sẵn kế hoạch hay phán xét, mà đặt câu hỏi gợi mở để người học tự rà soát chi phí Thiết yếu (Needs) vs Mong muốn (Wants).
+2. TIẾP CẬN 4 BẬC THANG NHẬN THỨC: Chẩn đoán (Diagnosis) -> Gợi ý phản tư (Reflection) -> Thử thách hành động (Action Challenge) -> Đúc kết bài học (Consolidation).
+3. ĐỒNG CẢM & NUÔI DƯỠNG TƯ DUY PHÁT TRIỂN: Luôn ghi nhận nỗ lực ghi chép của sinh viên trước khi chỉ ra các điểm cần tối ưu hóa. Tuyệt đối không rao giảng đạo đức.
+4. KIỂM SOÁT TẢI LƯỢNG NHẬN THỨC: Trả lời ngắn gọn dưới 150 từ, trình bày gãy gọn và kết thúc bằng DUY NHẤT 1 CÂU HỎI TRỌNG TÂM để người học tập trung phản tư.
+5. Tuyệt đối không phím mã cổ phiếu, crypto hay tư vấn vay nợ rủi ro.
+
+DỮ LIỆU TÀI CHÍNH THÁNG NÀY CỦA SINH VIÊN:
+- Thu nhập: ${fmtVND(stats.income)} | Chi tiêu: ${fmtVND(stats.expense)} | Số dư: ${fmtVND(stats.balance)}.
+- Thiết yếu (Needs): ${fmtVND(stats.needsExpense || 0)} (${stats.needsPercent || 0}%).
+- Mong muốn (Wants): ${fmtVND(stats.wantsExpense || 0)} (${stats.wantsPercent || 0}%).
+- Điểm kỷ luật: ${stats.disciplineScore || 80}/100.
+- Top danh mục chi: ${topCats || "chưa có"}. ${overBudgetCats.length ? "Đã vượt hạn mức ở: " + overBudgetCats.join(", ") + "." : "Ngân sách an toàn."}
+Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời khuyên sư phạm phù hợp.`;
 
     let hasAddedBotMsg = false;
 
@@ -509,14 +542,14 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
     }
   }
 
-  // NAV chỉ có 4 tab (đã bỏ "Học"), FAB nổi ở giữa
+  // NAV gồm 4 tab học phần + FAB nổi ở giữa
   const NAV_LEFT = [
     { id: "home", label: "Trang chủ", Icon: Wallet },
-    { id: "transactions", label: "Lịch sử", Icon: TrendingUp },
+    { id: "transactions", label: "Nhật ký", Icon: TrendingUp },
   ];
   const NAV_RIGHT = [
-    { id: "budget", label: "Ngân sách", Icon: PiggyBank },
-    { id: "chat", label: "Trợ lý Tuấn", Icon: MessageCircle },
+    { id: "learn", label: "Học tập", Icon: GraduationCap },
+    { id: "chat", label: "Trợ lý Tuấn", Icon: Sparkles },
   ];
 
   const currentDateVN = useMemo(() => {
@@ -628,6 +661,8 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
                 onOpenSettings={() => setShowSettings(true)}
                 onEditTx={(tx) => setEditingTx(tx)}
                 onDeleteTx={deleteTx}
+                onGoToBudget={() => setTab("budget")}
+                onAskTuấn={(q) => { setTab("chat"); setChatInput(q); }}
               />
             )}
             {!dataLoading && tab === "transactions" && (
@@ -639,13 +674,34 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
               />
             )}
             {!dataLoading && tab === "budget" && (
-              <BudgetTab
-                budgets={budgets}
-                onUpdateBudget={updateBudget}
-                byCat={stats.byCat}
-                userSettings={userSettings}
-                onUpdateSettings={updateSettings}
-                safeToSpend={safeToSpend}
+              <div>
+                <div style={{ marginTop: 10, marginBottom: 8 }}>
+                  <button
+                    onClick={() => setTab("home")}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: T.teal, fontSize: 12, fontWeight: 700, display: "flex",
+                      alignItems: "center", gap: 4, padding: "4px 0"
+                    }}
+                  >
+                    <ChevronLeft size={16} /> Quay lại Trang chủ
+                  </button>
+                </div>
+                <BudgetTab
+                  budgets={budgets}
+                  onUpdateBudget={updateBudget}
+                  byCat={stats.byCat}
+                  userSettings={userSettings}
+                  onUpdateSettings={updateSettings}
+                  safeToSpend={safeToSpend}
+                />
+              </div>
+            )}
+            {!dataLoading && tab === "learn" && (
+              <LearnTab
+                onAsk={(q) => { setTab("chat"); setChatInput(q); }}
+                stats={stats}
+                transactions={transactions}
               />
             )}
           </div>
@@ -813,7 +869,7 @@ Hãy dùng dữ liệu này khi có liên quan để đưa ra lời khuyên cá 
 
 
 // ---------------- Home ----------------
-function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx }) {
+function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx, onGoToBudget, onAskTuấn }) {
   const recent = transactions.slice(0, 4);
 
   const [hideBalance, setHideBalance] = useState(() => {
@@ -899,8 +955,34 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
 
   return (
     <div>
+      {/* Top Academic Sub-navigation */}
+      <div style={{ display: "flex", gap: 6, marginTop: 10, marginBottom: 8 }}>
+        <div
+          style={{
+            flex: 1, padding: "7px 10px", borderRadius: 10, fontSize: 11.5, fontWeight: 700,
+            background: T.teal, color: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            boxShadow: "0 2px 6px rgba(31,111,99,0.25)"
+          }}
+        >
+          <span>📊 Tổng quan & Kỷ luật</span>
+        </div>
+        <button
+          onClick={onGoToBudget}
+          style={{
+            flex: 1, padding: "7px 10px", borderRadius: 10, fontSize: 11.5, fontWeight: 600,
+            background: T.card, color: T.ink, border: `1px solid ${T.border}`, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            transition: "all 0.15s"
+          }}
+        >
+          <PiggyBank size={14} color={T.goldDark} />
+          <span>🎯 Kế hoạch 50/30/20</span>
+        </button>
+      </div>
+
       <div style={{
-        marginTop: 10, background: T.tealDark, borderRadius: 16, padding: "18px 20px",
+        marginTop: 4, background: T.tealDark, borderRadius: 16, padding: "18px 20px",
         color: "#F1EEE3", position: "relative", overflow: "hidden",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -947,6 +1029,115 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
             <span style={{ fontSize: 12.5, opacity: 0.9, whiteSpace: "nowrap" }}>Chi: {fmtVND(stats.expense)}</span>
           </div>
         </div>
+      </div>
+
+      {/* Thẻ Chỉ số Kỷ luật & Sức khỏe Tài chính (Financial Discipline & Literacy Index) */}
+      <div style={{
+        marginTop: 12, background: T.card, borderRadius: 16, padding: "14px 16px",
+        border: `1px solid ${T.border}`,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Target size={16} color={T.teal} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.tealDark }}>
+              Chỉ số Kỷ luật Tài chính (FLI)
+            </span>
+          </div>
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
+            background: stats.disciplineScore >= 80 ? "#D1FAE5" : stats.disciplineScore >= 60 ? "#FEF3C7" : "#FEE2E2",
+            color: stats.disciplineScore >= 80 ? "#065F46" : stats.disciplineScore >= 60 ? "#92400E" : "#991B1B",
+          }}>
+            {stats.disciplineScore >= 80 ? "Xuất sắc" : stats.disciplineScore >= 60 ? "Khá · Đạt chuẩn" : "Cần tiết chế"} ({stats.disciplineScore || 80}/100)
+          </span>
+        </div>
+
+        {/* Thanh tỷ lệ 50/30/20 */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ height: 10, width: "100%", background: "#E5E7EB", borderRadius: 6, display: "flex", overflow: "hidden" }}>
+            <div
+              title={`Thiết yếu: ${stats.needsPercent || 0}%`}
+              style={{
+                width: `${Math.min(100, stats.needsPercent || 0)}%`,
+                background: "#10B981", transition: "width 0.4s ease"
+              }}
+            />
+            <div
+              title={`Mong muốn: ${stats.wantsPercent || 0}%`}
+              style={{
+                width: `${Math.min(100 - (stats.needsPercent || 0), stats.wantsPercent || 0)}%`,
+                background: "#F59E0B", transition: "width 0.4s ease"
+              }}
+            />
+            <div
+              title={`Tích lũy: ${Math.max(0, 100 - (stats.needsPercent || 0) - (stats.wantsPercent || 0))}%`}
+              style={{
+                flex: 1,
+                background: "#3B82F6", transition: "width 0.4s ease"
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Chú giải phân bổ Needs vs Wants */}
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: T.inkSoft }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
+            Cần thiết: <strong>{stats.needsPercent || 0}%</strong> (chuẩn ≤50%)
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
+            Sở thích: <strong>{stats.wantsPercent || 0}%</strong> (chuẩn ≤30%)
+          </span>
+        </div>
+
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}`, fontSize: 11, color: T.inkSoft, lineHeight: 1.45 }}>
+          {stats.wantsPercent > 35 ? (
+            <span style={{ color: "#B45309" }}>
+              ⚠️ Chi tiêu cho Mong muốn (Wants) đang chiếm {stats.wantsPercent}% tổng chi. Hãy suy nghĩ kỹ trước khi mua món đồ tiếp theo nhé!
+            </span>
+          ) : (
+            <span style={{ color: "#047857" }}>
+              ✨ Bạn đang duy trì phân bổ chi tiêu rất lành mạnh! Tỷ lệ nhu cầu thiết yếu đạt chuẩn sinh viên.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Thẻ Cố vấn Socratic Tuấn - Phản tư hành vi */}
+      <div style={{
+        marginTop: 12, background: "linear-gradient(135deg, rgba(31,111,99,0.08), rgba(217,164,65,0.12))",
+        border: `1px solid ${T.teal}44`, borderRadius: 16, padding: "12px 14px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
+          <Sparkles size={16} color={T.teal} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark, textTransform: "uppercase", letterSpacing: 0.3 }}>
+            Cố vấn Tuấn · Phản tư hôm nay
+          </span>
+        </div>
+        <p style={{ margin: "0 0 10px", fontSize: 12, color: T.ink, lineHeight: 1.5, fontStyle: "italic" }}>
+          {stats.wantsPercent > 30
+            ? `Tuấn thấy tháng này bạn đã dành ${fmtVND(stats.wantsExpense)} cho các khoản Mong muốn (Wants). Bạn có nghĩ số tiền này nếu giữ lại sẽ giúp giảm bớt áp lực tài chính những tuần tới không?`
+            : safeToSpend?.isOverBudget
+            ? `Hôm nay đã vượt hạn mức Safe-to-Spend một chút. Trước khi chi khoản tiếp theo, hãy thử áp dụng 'Quy tắc 24h': Trì hoãn 1 ngày xem mình có thực sự cần món đó không nhé?`
+            : `"Chi tiêu thông minh không phải là tằn tiện kham khổ, mà là tỉnh táo nhận diện khoản nào thực sự phục vụ tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
+        </p>
+        <button
+          onClick={() => onAskTuấn(
+            stats.wantsPercent > 30
+              ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
+              : "Tuấn ơi, giải thích giúp mình bí quyết phân biệt rạch ròi giữa Nhu cầu (Needs) và Mong muốn (Wants) trong đời sống sinh viên trọ với?"
+          )}
+          style={{
+            background: T.card, border: `1px solid ${T.teal}66`, borderRadius: 8,
+            padding: "6px 12px", fontSize: 11.5, fontWeight: 600, color: T.tealDark,
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center"
+          }}
+        >
+          <MessageCircle size={13} color={T.teal} />
+          <span>Trò chuyện & Phản tư cùng Tuấn</span>
+        </button>
       </div>
 
       {/* Thẻ Hạn mức hôm nay (Safe-to-Spend) */}
@@ -1140,8 +1331,18 @@ function TxRow({ t, onDelete, onEdit }) {
         <div style={{ fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: T.ink }}>
           {noteText}
         </div>
-        <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 1 }}>
-          {meta.label} · {formatDateVN(t.date)}
+        <div style={{ fontSize: 10.5, color: T.inkSoft, marginTop: 1, display: "flex", alignItems: "center", gap: 5 }}>
+          <span>{meta.label} · {formatDateVN(t.date)}</span>
+          {t.type === "expense" && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4,
+              background: t.nature === "want" ? "#FEF3C7" : "#D1FAE5",
+              color: t.nature === "want" ? "#92400E" : "#065F46",
+              border: `1px solid ${t.nature === "want" ? "#FDE68A" : "#A7F3D0"}`
+            }}>
+              {t.nature === "want" ? "Mong muốn" : "Thiết yếu"}
+            </span>
+          )}
         </div>
       </div>
       <div style={{ fontSize: 13, fontWeight: 700, color: t.type === "income" ? T.teal : T.brick, flexShrink: 0, marginLeft: 4 }}>
@@ -1302,7 +1503,13 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
 
   const filtered = useMemo(() => {
     let list = [...periodTransactions];
-    if (filterType !== "all") list = list.filter((t) => t.type === filterType);
+    if (filterType === "expense" || filterType === "income") {
+      list = list.filter((t) => t.type === filterType);
+    } else if (filterType === "need") {
+      list = list.filter((t) => t.type === "expense" && t.nature !== "want");
+    } else if (filterType === "want") {
+      list = list.filter((t) => t.type === "expense" && t.nature === "want");
+    }
     if (selectedCat !== "all") list = list.filter((t) => t.cat === selectedCat);
     if (searchKeyword.trim()) {
       const kw = searchKeyword.trim().toLowerCase();
@@ -1463,11 +1670,13 @@ function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
             </button>
           )}
         </div>
-        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 3, flexShrink: 0, overflowX: "auto" }}>
           {[
             { id: "all",     label: "Tất cả" },
             { id: "expense", label: "Chi" },
             { id: "income",  label: "Thu" },
+            { id: "need",    label: "🟢 Thiết yếu" },
+            { id: "want",    label: "🟡 Mong muốn" },
           ].map((f) => {
             const active = filterType === f.id;
             return (
@@ -1706,48 +1915,6 @@ function BudgetTab({ budgets, onUpdateBudget, byCat, userSettings, onUpdateSetti
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------- Learn ----------------
-function LearnTab({ onAsk }) {
-  return (
-    <div>
-      <div style={{ marginTop: 12, marginBottom: 12 }}>
-        <div style={{ background: T.gold + "26", border: `1px solid ${T.gold}66`, borderRadius: 12, padding: "12px 14px", display: "flex", gap: 10 }}>
-          <Lightbulb size={18} color={T.goldDark} style={{ flexShrink: 0, marginTop: 1 }} />
-          <div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: T.goldDark, marginBottom: 2 }}>MẸO HÔM NAY</div>
-            <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.5 }}>{TIP_OF_DAY}</div>
-          </div>
-        </div>
-      </div>
-
-      <SectionTitle label="Bài học tài chính ngắn" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-        {LESSONS.map((l) => (
-          <div key={l.title} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: "12px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: T.teal, background: T.teal + "1A", padding: "2px 8px", borderRadius: 20 }}>{l.tag}</span>
-            </div>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 3 }}>{l.title}</div>
-            <div style={{ fontSize: 12, color: T.inkSoft, lineHeight: 1.5 }}>{l.desc}</div>
-          </div>
-        ))}
-      </div>
-
-      <SectionTitle label="Hỏi Tuấn thêm về chủ đề này" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {SUGGESTED_PROMPTS.map((q) => (
-          <button key={q} onClick={() => onAsk(q)} className="chip-btn" style={{
-            textAlign: "left", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
-            padding: "10px 12px", fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", color: T.ink,
-          }}>
-            <span>{q}</span> <ChevronRight size={14} className="chip-arrow" color={T.inkSoft} />
-          </button>
-        ))}
       </div>
     </div>
   );
@@ -2665,7 +2832,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                 {cats.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => setForm((f) => ({ ...f, cat: c.id }))}
+                    onClick={() => setForm((f) => ({ ...f, cat: c.id, nature: (c.id === "entertainment" || c.id === "shopping") ? "want" : (f.type === "expense" ? f.nature : "need") }))}
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 2px",
                       borderRadius: 10, cursor: "pointer", minWidth: 0,
@@ -2736,6 +2903,46 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </div>
                 </div>
               )}
+              {/* Phân loại Tư duy Sư phạm (Needs vs Wants) */}
+              {form.type === "expense" && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, marginBottom: 5, display: "flex", justifyContent: "space-between" }}>
+                    <span>PHÂN LOẠI TƯ DUY TÀI CHÍNH</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: form.nature === "want" ? "#B45309" : "#047857" }}>
+                      {form.nature === "want" ? "Mong muốn (Wants)" : "Thiết yếu (Needs)"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, nature: "need" }))}
+                      style={{
+                        flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                        border: `1.5px solid ${form.nature !== "want" ? "#10B981" : T.border}`,
+                        background: form.nature !== "want" ? "#ECFDF5" : T.card,
+                        color: form.nature !== "want" ? "#065F46" : T.inkSoft,
+                        cursor: "pointer",
+                      }}
+                    >
+                      🟢 Thiết yếu (Needs)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, nature: "want" }))}
+                      style={{
+                        flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                        border: `1.5px solid ${form.nature === "want" ? "#F59E0B" : T.border}`,
+                        background: form.nature === "want" ? "#FFFBEB" : T.card,
+                        color: form.nature === "want" ? "#92400E" : T.inkSoft,
+                        cursor: "pointer",
+                      }}
+                    >
+                      🟡 Mong muốn (Wants)
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <input
                 type="text" placeholder="Ghi chú (vd: Ăn trưa với bạn)" value={form.note}
                 onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}

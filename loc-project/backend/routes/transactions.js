@@ -9,7 +9,7 @@ router.use(requireAuth); // mọi route bên dưới đều yêu cầu đăng nh
 router.get("/", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT id, type, category, amount, note, DATE_FORMAT(tx_date, '%Y-%m-%d') AS date FROM transactions WHERE user_id = ? ORDER BY tx_date DESC, id DESC",
+      "SELECT id, type, category, amount, note, COALESCE(nature, 'need') AS nature, DATE_FORMAT(tx_date, '%Y-%m-%d') AS date FROM transactions WHERE user_id = ? ORDER BY tx_date DESC, id DESC",
       [req.userId]
     );
     res.json({ transactions: rows });
@@ -22,11 +22,16 @@ router.get("/", async (req, res) => {
 // POST /api/transactions — thêm giao dịch mới
 router.post("/", async (req, res) => {
   try {
-    const { type, category, amount, note, date } = req.body;
+    const { type, category, amount, note, date, nature } = req.body;
 
     if (!["income", "expense"].includes(type)) {
       return res.status(400).json({ error: "Loại giao dịch không hợp lệ." });
     }
+
+    // Xác định bản chất chi tiêu: need (thiết yếu) hoặc want (mong muốn)
+    const txNature = ["need", "want"].includes(nature)
+      ? nature
+      : (["entertainment", "shopping"].includes(category) ? "want" : "need");
 
     // Chuẩn hóa ngày theo múi giờ Việt Nam (YYYY-MM-DD)
     let txDate = date;
@@ -44,12 +49,12 @@ router.post("/", async (req, res) => {
     }
 
     const [result] = await pool.query(
-      "INSERT INTO transactions (user_id, type, category, amount, note, tx_date) VALUES (?, ?, ?, ?, ?, ?)",
-      [req.userId, type, category, amount, note || "", txDate]
+      "INSERT INTO transactions (user_id, type, category, amount, note, nature, tx_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [req.userId, type, category, amount, note || "", txNature, txDate]
     );
 
     res.status(201).json({
-      transaction: { id: result.insertId, type, category, amount: Number(amount), note: note || "", date: txDate },
+      transaction: { id: result.insertId, type, category, amount: Number(amount), note: note || "", nature: txNature, date: txDate },
     });
   } catch (err) {
     console.error(err);
@@ -60,7 +65,7 @@ router.post("/", async (req, res) => {
 // PUT /api/transactions/:id — cập nhật giao dịch
 router.put("/:id", async (req, res) => {
   try {
-    const { type, category, amount, note, date } = req.body;
+    const { type, category, amount, note, date, nature } = req.body;
 
     if (type && !["income", "expense"].includes(type)) {
       return res.status(400).json({ error: "Loại giao dịch không hợp lệ." });
@@ -80,7 +85,7 @@ router.put("/:id", async (req, res) => {
 
     // Kiểm tra giao dịch có thuộc về user không
     const [existing] = await pool.query(
-      "SELECT id, type, category, amount, note, DATE_FORMAT(tx_date, '%Y-%m-%d') AS date FROM transactions WHERE id = ? AND user_id = ?",
+      "SELECT id, type, category, amount, note, nature, DATE_FORMAT(tx_date, '%Y-%m-%d') AS date FROM transactions WHERE id = ? AND user_id = ?",
       [req.params.id, req.userId]
     );
 
@@ -93,11 +98,12 @@ router.put("/:id", async (req, res) => {
     const updatedCategory = category || current.category;
     const updatedAmount = amount !== undefined ? Number(amount) : Number(current.amount);
     const updatedNote = note !== undefined ? note : current.note;
+    const updatedNature = nature !== undefined ? nature : (current.nature || (["entertainment", "shopping"].includes(updatedCategory) ? "want" : "need"));
     const updatedDate = txDate || current.date;
 
     await pool.query(
-      "UPDATE transactions SET type = ?, category = ?, amount = ?, note = ?, tx_date = ? WHERE id = ? AND user_id = ?",
-      [updatedType, updatedCategory, updatedAmount, updatedNote, updatedDate, req.params.id, req.userId]
+      "UPDATE transactions SET type = ?, category = ?, amount = ?, note = ?, nature = ?, tx_date = ? WHERE id = ? AND user_id = ?",
+      [updatedType, updatedCategory, updatedAmount, updatedNote, updatedNature, updatedDate, req.params.id, req.userId]
     );
 
     res.json({
@@ -107,6 +113,7 @@ router.put("/:id", async (req, res) => {
         category: updatedCategory,
         amount: updatedAmount,
         note: updatedNote,
+        nature: updatedNature,
         date: updatedDate,
       },
     });

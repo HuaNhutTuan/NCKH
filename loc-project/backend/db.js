@@ -59,6 +59,7 @@ async function initDB() {
         category VARCHAR(50) NOT NULL,
         amount DECIMAL(14,2) NOT NULL,
         note VARCHAR(255) DEFAULT '',
+        nature VARCHAR(10) DEFAULT 'need',
         tx_date DATE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -116,6 +117,11 @@ async function initDB() {
     // Bổ sung cột last_login_date nếu chưa có
     try {
       await conn.query("ALTER TABLE users ADD COLUMN last_login_date DATE DEFAULT NULL");
+    } catch (e) { /* Đã có cột */ }
+
+    // Bổ sung cột nature (need/want) vào bảng transactions cho đề tài NCKH Giáo dục Tài chính
+    try {
+      await conn.query("ALTER TABLE transactions ADD COLUMN nature VARCHAR(10) DEFAULT 'need'");
     } catch (e) { /* Đã có cột */ }
 
     // Bảng cơ sở tri thức dùng chung (Knowledge Base cho Chat Box AI)

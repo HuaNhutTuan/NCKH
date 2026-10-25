@@ -29,6 +29,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
     id: tx.id,
     type: tx.type || "expense",
     cat: tx.cat || tx.category || "food",
+    nature: tx.nature || (["entertainment", "shopping"].includes(tx.cat || tx.category) ? "want" : "need"),
     amount: formatThousands(tx.amount || ""),
     note: tx.note || "",
     date: tx.date || "",
@@ -64,6 +65,7 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
         category: form.cat,
         cat: form.cat,
         amount: amt,
+        nature: form.nature || "need",
         note: form.note || "(không ghi chú)",
         date: form.date,
       });
@@ -211,6 +213,46 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
             </button>
           ))}
         </div>
+
+        {/* Educational: Needs vs Wants selection */}
+        {form.type === "expense" && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, marginBottom: 6, display: "flex", justifyContent: "space-between" }}>
+              <span>BẢN CHẤT CHI TIÊU (TƯ DUY SƯ PHẠM)</span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: form.nature === "want" ? "#B45309" : "#047857" }}>
+                {form.nature === "want" ? "Mong muốn (Wants)" : "Thiết yếu (Needs)"}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, nature: "need" }))}
+                style={{
+                  flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                  border: `1.5px solid ${form.nature !== "want" ? "#10B981" : T.border}`,
+                  background: form.nature !== "want" ? "#ECFDF5" : T.card,
+                  color: form.nature !== "want" ? "#065F46" : T.inkSoft,
+                  cursor: "pointer",
+                }}
+              >
+                🟢 Cần thiết (Needs)
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, nature: "want" }))}
+                style={{
+                  flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11.5, fontWeight: 600,
+                  border: `1.5px solid ${form.nature === "want" ? "#F59E0B" : T.border}`,
+                  background: form.nature === "want" ? "#FFFBEB" : T.card,
+                  color: form.nature === "want" ? "#92400E" : T.inkSoft,
+                  cursor: "pointer",
+                }}
+              >
+                🟡 Mong muốn (Wants)
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Note input */}
         <input

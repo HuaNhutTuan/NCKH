@@ -66,10 +66,10 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }) {
             <Sparkles size={24} />
           </div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#123F38", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Chào mừng đến với NCKH!
+            Chào mừng đến với EduFin!
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5B6660" }}>
-            Thiết lập nhanh 3 thông tin để kích hoạt hạn mức tiêu chuẩn xác mỗi ngày.
+            Hệ thống Giáo dục & Rèn luyện Kỹ năng Quản lý Tài chính Cá nhân dành cho Sinh viên.
           </p>
         </div>
 

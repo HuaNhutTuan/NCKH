@@ -331,14 +331,25 @@ export default function Login() {
         {/* Khối Glassmorphism mờ sang trọng */}
         <div className="aurora-glass-card">
           {/* Tiêu đề & phụ đề */}
-          <h1 className="aurora-title">
-            {mode === "login" ? "Chào mừng quay trở lại" : "Tạo tài khoản mới"}
-          </h1>
-          <p className="aurora-subtitle">
-            {mode === "login"
-              ? "Vui lòng nhập thông tin của bạn"
-              : "Vui lòng điền thông tin để đăng ký ví"}
-          </p>
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <span style={{
+              display: "inline-block", fontSize: 10, fontWeight: 700,
+              background: "rgba(31, 111, 99, 0.2)", color: "#1F6F63",
+              border: "1px solid rgba(31, 111, 99, 0.4)",
+              borderRadius: 20, padding: "3px 10px", marginBottom: 8,
+              letterSpacing: 0.5, textTransform: "uppercase"
+            }}>
+              🎓 Đề tài NCKH Sư phạm Tài chính
+            </span>
+            <h1 className="aurora-title" style={{ margin: "4px 0" }}>
+              EduFin Sinh Viên
+            </h1>
+            <p className="aurora-subtitle" style={{ margin: 0 }}>
+              {mode === "login"
+                ? "Nền tảng Giáo dục & Cố vấn Tài chính Cá nhân Sinh viên"
+                : "Tạo tài khoản để bắt đầu rèn luyện tư duy tự chủ tài chính"}
+            </p>
+          </div>
 
           <form className="aurora-form" onSubmit={handleSubmit}>
             {/* Trường Họ tên nếu đang ở chế độ Đăng ký */}
