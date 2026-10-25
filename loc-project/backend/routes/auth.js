@@ -407,6 +407,33 @@ router.put("/change-password", requireAuth, async (req, res) => {
   }
 });
 
+// POST & DELETE /api/auth/clear-data — Xóa tất cả dữ liệu người dùng (giao dịch, ngân sách, cài đặt)
+const handleClearData = async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    await connection.query("DELETE FROM transactions WHERE user_id = ?", [req.userId]);
+    await connection.query("DELETE FROM budgets WHERE user_id = ?", [req.userId]);
+    try {
+      await connection.query("DELETE FROM user_settings WHERE user_id = ?", [req.userId]);
+    } catch (_) {}
+    await connection.commit();
+    res.json({ message: "Đã xóa toàn bộ dữ liệu thành công." });
+  } catch (err) {
+    if (connection) {
+      try { await connection.rollback(); } catch (_) {}
+    }
+    console.error("Lỗi xóa tất cả dữ liệu:", err.code || err.message);
+    res.status(500).json({ error: "Có lỗi xảy ra khi xóa dữ liệu." });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+router.post("/clear-data", requireAuth, handleClearData);
+router.delete("/clear-data", requireAuth, handleClearData);
+
 const { sendIdentityEmail } = require("../mailer");
 
 // Hàm sinh thử thách xác minh danh tính 3 con số (1 con số đúng + 2 con số gây nhiễu)

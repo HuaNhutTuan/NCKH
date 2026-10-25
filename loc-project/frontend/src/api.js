@@ -37,6 +37,8 @@ export const authApi = {
   getOAuthConfig: () => request("/auth/oauth-config"),
   socialDirectLogin: ({ email, name, avatar, provider }) =>
     request("/auth/social-login", { method: "POST", body: { email, name, avatar, provider } }),
+  clearData: (token) =>
+    request("/auth/clear-data", { method: "POST", token }),
 };
 
 export const transactionsApi = {

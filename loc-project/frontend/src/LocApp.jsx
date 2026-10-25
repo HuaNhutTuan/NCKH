@@ -842,6 +842,15 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             onClose={() => setShowProfile(false)}
             onLogout={logout}
             onUserUpdate={(updated) => updateUser?.(updated)}
+            onClearData={() => {
+              setTransactions([]);
+              setBudgets({});
+              setUserSettings({ payday_day: 1, emergency_reserve: 0 });
+              setToast({
+                message: "Đã xóa toàn bộ dữ liệu giao dịch và ngân sách thành công.",
+                type: "info",
+              });
+            }}
           />
         )}
 
@@ -1031,6 +1040,47 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         </div>
       </div>
 
+      {/* Nút thêm giao dịch bằng giọng nói ngay dưới khung số dư */}
+      <div style={{ marginTop: 10 }}>
+        <button
+          onClick={onOpenVoice}
+          className="btn-teal"
+          style={{
+            width: "100%",
+            background: `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
+            color: "#fff",
+            border: "none",
+            borderRadius: 14,
+            padding: "12px 16px",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 9,
+            boxShadow: "0 3px 12px rgba(31,111,99,0.25)",
+            transition: "all 0.18s ease",
+          }}
+          title="Nói để thêm giao dịch bằng giọng nói"
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Mic size={16} color="#fff" />
+          </div>
+          <span>Thêm giao dịch bằng giọng nói</span>
+        </button>
+      </div>
+
       {/* Thẻ Chỉ số Kỷ luật & Sức khỏe Tài chính (Financial Discipline & Literacy Index) */}
       <div style={{
         marginTop: 12, background: T.card, borderRadius: 16, padding: "14px 16px",
@@ -1209,21 +1259,6 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: 12 }}>
-        <button
-          onClick={onOpenVoice}
-          className="btn-teal"
-          style={{
-            width: "100%", background: T.teal, color: "#fff", border: "none",
-            borderRadius: 12, padding: "12px 16px", fontWeight: 600, fontSize: 14, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8, whiteSpace: "nowrap",
-          }}
-          title="Nói để thêm giao dịch bằng giọng nói"
-        >
-          <Mic size={18} style={{ flexShrink: 0 }} /> Thêm giao dịch bằng giọng nói
-        </button>
-      </div>
 
       {overBudgetCats.length > 0 && (
         <div style={{

@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   X, Camera, User, Flame, Lock, Eye, EyeOff, Save, LogOut,
-  Calendar, Mail, ChevronDown, ChevronUp, Edit3
+  Calendar, Mail, ChevronDown, ChevronUp, Edit3, Trash2
 } from "lucide-react";
 import { authApi } from "../../api";
+import ConfirmModal from "./ConfirmModal";
 
 const T = {
   paper: "#F1EEE3",
@@ -114,7 +115,7 @@ function compressImage(file, maxSize = 320, quality = 0.85) {
   });
 }
 
-export default function ProfileModal({ user, token, onClose, onLogout, onUserUpdate }) {
+export default function ProfileModal({ user, token, onClose, onLogout, onUserUpdate, onClearData }) {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [birthday, setBirthday] = useState(toInputDate(user?.birthday || ""));
@@ -130,6 +131,8 @@ export default function ProfileModal({ user, token, onClose, onLogout, onUserUpd
   const [savingPw, setSavingPw] = useState(false);
   const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const fileInputRef = useRef(null);
 
   const streak = user?.streak_count || 1;
@@ -201,6 +204,23 @@ export default function ProfileModal({ user, token, onClose, onLogout, onUserUpd
       setToast({ type: "error", msg: err.message || "Có lỗi khi đổi mật khẩu." });
     } finally {
       setSavingPw(false);
+    }
+  }
+
+  async function handleClearAllData() {
+    setClearing(true);
+    try {
+      const res = await authApi.clearData(token);
+      setToast({ type: "success", msg: res?.message || "Đã xóa tất cả dữ liệu thành công!" });
+      setShowClearConfirm(false);
+      if (onClearData) {
+        onClearData();
+      }
+    } catch (err) {
+      setToast({ type: "error", msg: err.message || "Có lỗi khi xóa dữ liệu." });
+      setShowClearConfirm(false);
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -520,6 +540,33 @@ export default function ProfileModal({ user, token, onClose, onLogout, onUserUpd
               {/* Phân cách */}
               <div style={{ borderTop: `1px solid ${T.border}`, margin: "6px 0" }} />
 
+              {/* Nút Xóa tất cả dữ liệu */}
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(true)}
+                disabled={clearing}
+                style={{
+                  width: "100%", padding: "11px", borderRadius: 12,
+                  background: "rgba(174,76,59,0.06)",
+                  color: T.brick, border: `1.5px dashed rgba(174,76,59,0.4)`,
+                  fontSize: 13.5, fontWeight: 600, cursor: clearing ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  transition: "background 0.18s, border-color 0.18s",
+                  opacity: clearing ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(174,76,59,0.14)";
+                  e.currentTarget.style.borderColor = T.brick;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(174,76,59,0.06)";
+                  e.currentTarget.style.borderColor = "rgba(174,76,59,0.4)";
+                }}
+              >
+                <Trash2 size={15} />
+                {clearing ? "Đang xóa dữ liệu..." : "Xóa tất cả dữ liệu"}
+              </button>
+
               {/* Nút Đăng xuất màu đỏ */}
               {!showLogoutConfirm ? (
                 <button
@@ -591,6 +638,18 @@ export default function ProfileModal({ user, token, onClose, onLogout, onUserUpd
           <div style={{ height: 16 }} />
         </div>
       </div>
+
+      {/* Modal xác nhận xóa tất cả dữ liệu */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="Xác nhận xóa tất cả dữ liệu"
+        message="Toàn bộ lịch sử giao dịch (thu/chi), thiết lập hạn mức ngân sách và tùy chỉnh tài chính của bạn sẽ bị xóa vĩnh viễn. Hành động này KHÔNG thể hoàn tác. Bạn có chắc chắn muốn xóa không?"
+        confirmText={clearing ? "Đang xóa..." : "Xóa tất cả dữ liệu"}
+        cancelText="Hủy"
+        isDanger={true}
+        onConfirm={handleClearAllData}
+        onCancel={() => { if (!clearing) setShowClearConfirm(false); }}
+      />
     </>
   );
 }
