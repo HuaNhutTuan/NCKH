@@ -8,12 +8,15 @@ const isCloud =
   process.env.DB_HOST !== "localhost" &&
   process.env.DB_HOST !== "127.0.0.1";
 
+const targetDbName =
+  process.env.DB_NAME === "sys" ? "test" : (process.env.DB_NAME || "loc_app");
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "loc_app",
+  database: targetDbName,
   waitForConnections: true,
   connectionLimit: 10,
   charset: "utf8mb4",
