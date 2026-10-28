@@ -38,7 +38,7 @@ const JWT_SECRET =
 
 function signToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "24h",
+    expiresIn: process.env.JWT_EXPIRES_IN || "365d",
   });
 }
 

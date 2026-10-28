@@ -13,7 +13,10 @@ async function request(path, { method = "GET", token, body } = {}) {
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || "Có lỗi xảy ra, vui lòng thử lại.");
+    const error = new Error(data.error || "Có lỗi xảy ra, vui lòng thử lại.");
+    error.status = res.status;
+    error.data = data;
+    throw error;
   }
   return data;
 }
