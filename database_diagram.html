@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mô Hình Cơ Sở Dữ Liệu - Ví Lộc (loc_app)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 selection:bg-emerald-500 selection:text-white">
+  <div class="max-w-7xl mx-auto space-y-8">
+    
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-800 pb-6 gap-4">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          <span>🌿 Schema MySQL</span> • <span>loc_app</span>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+          Sơ Đồ Thực Thể Quan Hệ (ERD) - Ứng Dụng Lộc
+        </h1>
+        <p class="text-slate-400 mt-1 text-sm md:text-base">
+          Mô hình kiến trúc cơ sở dữ liệu quản lý tài chính sinh viên tích hợp trợ lý AI thông minh.
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-xs bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg">5 Bảng chính</span>
+        <span class="text-xs bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg">InnoDB / utf8mb4</span>
+      </div>
+    </header>
+
+    <!-- Visual ERD Diagram Card -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
+        <h2 class="text-lg font-bold text-emerald-400 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+          Sơ Đồ Trực Quan (Entity Relationship Model)
+        </h2>
+        <span class="text-xs text-slate-400">Mermaid Rendered</span>
+      </div>
+
+      <div class="overflow-x-auto flex justify-center py-4 bg-slate-950/70 rounded-xl border border-slate-800/60 p-4">
+        <pre class="mermaid text-sm">
+erDiagram
+    users ||--o{ transactions : "thực hiện (1-N)"
+    users ||--o{ budgets : "thiết lập hạn mức (1-N)"
+    users ||--o| user_settings : "cấu hình an toàn (1-1)"
+    users ||--o{ knowledge_base : "được tạo/quản trị (0..1-N)"
+
+    users {
+        int id PK "Khóa chính, tự tăng"
+        string name "Họ và tên sinh viên"
+        string email UK "Email đăng nhập duy nhất"
+        string password_hash "Mật khẩu mã hóa bcrypt"
+        string role "Quyền: user hoặc admin"
+        text avatar_url "Ảnh đại diện"
+        date birthday "Ngày sinh nhật"
+        int streak_count "Chuỗi đăng nhập liên tiếp"
+        date last_login_date "Lần đăng nhập gần nhất"
+        timestamp created_at "Thời điểm đăng ký tài khoản"
+    }
+
+    transactions {
+        int id PK "Khóa chính"
+        int user_id FK "Người dùng sở hữu"
+        enum type "income (thu) | expense (chi)"
+        string category "Danh mục: food, study, transport..."
+        decimal amount "Số tiền giao dịch (14,2)"
+        string note "Ghi chú nội dung giao dịch"
+        date tx_date "Ngày phát sinh chi tiêu"
+        timestamp created_at "Thời điểm ghi nhận"
+    }
+
+    budgets {
+        int id PK "Khóa chính"
+        int user_id FK "Người dùng sở hữu"
+        string category "Danh mục áp dụng"
+        decimal monthly_limit "Hạn mức tối đa/tháng"
+    }
+
+    user_settings {
+        int user_id PK_FK "ID người dùng (1-to-1)"
+        int payday_day "Ngày nhận trợ cấp/lương (1-31)"
+        decimal emergency_reserve "Khoản dự phòng khẩn cấp"
+        timestamp updated_at "Lần cập nhật cuối"
+    }
+
+    knowledge_base {
+        int id PK "Khóa chính"
+        enum type "faq | document | text"
+        string title "Tiêu đề kiến thức"
+        mediumtext content "Nội dung bài viết / FAQ AI"
+        string file_name "Tên file gốc (nếu upload)"
+        boolean is_active "Trạng thái kích hoạt"
+        int created_by FK "Admin tạo bài"
+        timestamp created_at "Ngày tạo"
+        timestamp updated_at "Ngày cập nhật"
+    }
+        </pre>
+      </div>
+    </section>
+
+    <!-- Table Details Cards -->
+    <section class="space-y-6">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">
+        <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zM9 4v16m6-16v16"></path></svg>
+        Chi Tiết Từng Bảng & Cấu Trúc Khóa (Constraints)
+      </h2>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Table 1: users -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-lg font-bold text-emerald-400 font-mono">1. users</span>
+              <span class="text-xs bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded">Bảng lõi (Core)</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Quản lý hồ sơ, xác thực và Gamification (streak tích lũy điểm chuyên cần).</p>
+            <div class="overflow-x-auto mt-3">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 bg-slate-950/60 font-mono">
+                  <tr>
+                    <th class="p-2">Cột</th>
+                    <th class="p-2">Kiểu dữ liệu</th>
+                    <th class="p-2">Ràng buộc & Ý nghĩa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                  <tr class="text-emerald-300 font-semibold"><td class="p-2">id</td><td class="p-2">INT</td><td class="p-2">PK, AUTO_INCREMENT</td></tr>
+                  <tr><td class="p-2">name</td><td class="p-2">VARCHAR(100)</td><td class="p-2 text-slate-300">Tên người dùng</td></tr>
+                  <tr><td class="p-2 text-yellow-300">email</td><td class="p-2">VARCHAR(190)</td><td class="p-2 text-yellow-300 font-semibold">UNIQUE, NOT NULL</td></tr>
+                  <tr><td class="p-2">password_hash</td><td class="p-2">VARCHAR(255)</td><td class="p-2 text-slate-400">Băm mật khẩu (bcrypt)</td></tr>
+                  <tr><td class="p-2">role</td><td class="p-2">VARCHAR(20)</td><td class="p-2 text-slate-400">user | admin</td></tr>
+                  <tr><td class="p-2">avatar_url</td><td class="p-2">MEDIUMTEXT</td><td class="p-2 text-slate-400">Base64 hoặc link ảnh</td></tr>
+                  <tr><td class="p-2">streak_count</td><td class="p-2">INT</td><td class="p-2 text-slate-300">Số ngày dùng liên tục</td></tr>
+                  <tr><td class="p-2">last_login_date</td><td class="p-2">DATE</td><td class="p-2 text-slate-400">Tính streak đăng nhập</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            Quan hệ: Là gốc liên kết (1 - N) với <code class="text-slate-200">transactions</code>, <code class="text-slate-200">budgets</code> và (1 - 1) với <code class="text-slate-200">user_settings</code>.
+          </div>
+        </div>
+
+        <!-- Table 2: transactions -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-lg font-bold text-sky-400 font-mono">2. transactions</span>
+              <span class="text-xs bg-sky-500/20 text-sky-300 font-semibold px-2 py-0.5 rounded">Dữ liệu biến động</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Lưu lại dòng tiền thu nhập và chi tiêu phát sinh theo ngày.</p>
+            <div class="overflow-x-auto mt-3">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 bg-slate-950/60 font-mono">
+                  <tr>
+                    <th class="p-2">Cột</th>
+                    <th class="p-2">Kiểu dữ liệu</th>
+                    <th class="p-2">Ràng buộc & Ý nghĩa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                  <tr class="text-emerald-300 font-semibold"><td class="p-2">id</td><td class="p-2">INT</td><td class="p-2">PK, AUTO_INCREMENT</td></tr>
+                  <tr class="text-amber-300 font-semibold"><td class="p-2">user_id</td><td class="p-2">INT</td><td class="p-2">FK -> users(id) ON DELETE CASCADE</td></tr>
+                  <tr><td class="p-2">type</td><td class="p-2">ENUM</td><td class="p-2 text-slate-300">'income' | 'expense'</td></tr>
+                  <tr><td class="p-2">category</td><td class="p-2">VARCHAR(50)</td><td class="p-2 text-slate-300">food, study, transport...</td></tr>
+                  <tr><td class="p-2">amount</td><td class="p-2">DECIMAL(14,2)</td><td class="p-2 text-emerald-400">Số tiền (chuẩn xác định lượng)</td></tr>
+                  <tr><td class="p-2">note</td><td class="p-2">VARCHAR(255)</td><td class="p-2 text-slate-400">Diễn giải nội dung</td></tr>
+                  <tr><td class="p-2">tx_date</td><td class="p-2">DATE</td><td class="p-2 text-slate-300">Ngày diễn ra giao dịch</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            Tối ưu hóa: Có <code class="text-cyan-300">INDEX idx_user_date (user_id, tx_date)</code> giúp truy vấn báo cáo theo tháng/ngày siêu nhanh.
+          </div>
+        </div>
+
+        <!-- Table 3: budgets -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-lg font-bold text-purple-400 font-mono">3. budgets</span>
+              <span class="text-xs bg-purple-500/20 text-purple-300 font-semibold px-2 py-0.5 rounded">Kế hoạch tài chính</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Hạn mức ngân sách kiểm soát chi tiêu cho từng hạng mục theo tháng.</p>
+            <div class="overflow-x-auto mt-3">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 bg-slate-950/60 font-mono">
+                  <tr>
+                    <th class="p-2">Cột</th>
+                    <th class="p-2">Kiểu dữ liệu</th>
+                    <th class="p-2">Ràng buộc & Ý nghĩa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                  <tr class="text-emerald-300 font-semibold"><td class="p-2">id</td><td class="p-2">INT</td><td class="p-2">PK, AUTO_INCREMENT</td></tr>
+                  <tr class="text-amber-300 font-semibold"><td class="p-2">user_id</td><td class="p-2">INT</td><td class="p-2">FK -> users(id) ON DELETE CASCADE</td></tr>
+                  <tr><td class="p-2">category</td><td class="p-2">VARCHAR(50)</td><td class="p-2 text-slate-300">Tên hạng mục</td></tr>
+                  <tr><td class="p-2">monthly_limit</td><td class="p-2">DECIMAL(14,2)</td><td class="p-2 text-purple-300">Hạn mức trần hàng tháng</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            Ràng buộc độc nhất: <code class="text-amber-300">UNIQUE KEY uniq_user_category (user_id, category)</code> chống trùng danh mục cho 1 user.
+          </div>
+        </div>
+
+        <!-- Table 4: user_settings -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-lg font-bold text-amber-400 font-mono">4. user_settings</span>
+              <span class="text-xs bg-amber-500/20 text-amber-300 font-semibold px-2 py-0.5 rounded">Thuật toán Safe-to-Spend</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Dữ liệu đầu vào cho công thức tính hạn mức tiêu an toàn mỗi ngày cho sinh viên.</p>
+            <div class="overflow-x-auto mt-3">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 bg-slate-950/60 font-mono">
+                  <tr>
+                    <th class="p-2">Cột</th>
+                    <th class="p-2">Kiểu dữ liệu</th>
+                    <th class="p-2">Ràng buộc & Ý nghĩa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                  <tr class="text-amber-300 font-semibold"><td class="p-2">user_id</td><td class="p-2">INT</td><td class="p-2">PRIMARY KEY & FK -> users(id)</td></tr>
+                  <tr><td class="p-2">payday_day</td><td class="p-2">INT</td><td class="p-2 text-slate-300">Ngày chu kỳ nhận tiền (mặc định: 1)</td></tr>
+                  <tr><td class="p-2">emergency_reserve</td><td class="p-2">DECIMAL(14,2)</td><td class="p-2 text-amber-300">Khoản dự phòng bất khả xâm phạm</td></tr>
+                  <tr><td class="p-2">updated_at</td><td class="p-2">TIMESTAMP</td><td class="p-2 text-slate-400">Tự động cập nhật thời gian</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            Quan hệ: <code class="text-amber-300">1-to-1</code> trực tiếp với bảng users (dùng luôn user_id làm khóa chính).
+          </div>
+        </div>
+
+        <!-- Table 5: knowledge_base -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between lg:col-span-2">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span class="text-lg font-bold text-rose-400 font-mono">5. knowledge_base</span>
+              <span class="text-xs bg-rose-500/20 text-rose-300 font-semibold px-2 py-0.5 rounded">RAG / Tri thức AI Chatbot</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Lưu trữ các chính sách tài chính, quy chế sinh viên, tài liệu PDF và FAQ được nạp vào cho Trợ lý Lộc AI.</p>
+            <div class="overflow-x-auto mt-3">
+              <table class="w-full text-xs text-left">
+                <thead class="text-slate-400 bg-slate-950/60 font-mono">
+                  <tr>
+                    <th class="p-2">Cột</th>
+                    <th class="p-2">Kiểu dữ liệu</th>
+                    <th class="p-2">Ràng buộc & Ý nghĩa</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono">
+                  <tr class="text-emerald-300 font-semibold"><td class="p-2">id</td><td class="p-2">INT</td><td class="p-2">PK, AUTO_INCREMENT</td></tr>
+                  <tr><td class="p-2">type</td><td class="p-2">ENUM</td><td class="p-2 text-slate-300">'faq', 'document', 'text'</td></tr>
+                  <tr><td class="p-2">title</td><td class="p-2">VARCHAR(255)</td><td class="p-2 text-slate-200">Tiêu đề tài liệu hoặc câu hỏi</td></tr>
+                  <tr><td class="p-2">content</td><td class="p-2">MEDIUMTEXT</td><td class="p-2 text-rose-300">Nội dung trích xuất làm context cho LLM</td></tr>
+                  <tr><td class="p-2">file_name</td><td class="p-2">VARCHAR(255)</td><td class="p-2 text-slate-400">Tên tài liệu gốc tải lên (PDF, TXT, MD)</td></tr>
+                  <tr><td class="p-2">is_active</td><td class="p-2">TINYINT(1)</td><td class="p-2 text-slate-300">Bật/tắt đưa vào prompt AI (INDEX)</td></tr>
+                  <tr><td class="p-2">created_by</td><td class="p-2">INT NULL</td><td class="p-2 text-slate-400">Tài khoản Admin đã nạp tài liệu này</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800 text-xs text-slate-400">
+            Ứng dụng: Khi người dùng chat với Lộc, hệ thống tự động tìm kiếm các record có <code class="text-rose-300">is_active = 1</code> để chèn vào ngữ cảnh prompt thông minh.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Key Design Principles -->
+    <section class="bg-gradient-to-r from-emerald-950/40 via-slate-900 to-sky-950/40 border border-slate-800 rounded-2xl p-6">
+      <h3 class="text-lg font-bold text-white mb-3">💡 Các Điểm Sáng Trong Thiết Kế CSDL Này</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+        <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-emerald-400 mb-1">Bảo Vệ Tính Toàn Vẹn Dữ Liệu</h4>
+          <p>Sử dụng <code class="text-amber-300">ON DELETE CASCADE</code> trên tất cả các khóa ngoại. Khi một người dùng xóa tài khoản, toàn bộ giao dịch, hạn mức và cấu hình sẽ tự động được dọn dẹp sạch sẽ, không để lại rác dữ liệu.</p>
+        </div>
+        <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-sky-400 mb-1">Chính Xác Về Tài Chính</h4>
+          <p>Dùng kiểu <code class="text-sky-300">DECIMAL(14, 2)</code> thay vì Float/Double, loại trừ hoàn toàn sai số dấu phẩy động khi tính toán dòng tiền hàng trăm triệu đồng.</p>
+        </div>
+        <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+          <h4 class="font-bold text-purple-400 mb-1">Hiệu Năng Với Indexing</h4>
+          <p>Chỉ mục tổng hợp <code class="text-purple-300">idx_user_date (user_id, tx_date)</code> tối ưu hóa các lệnh lọc báo cáo thu chi sinh viên theo ngày, tháng, tuần trong nháy mắt.</p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#020617',
+        primaryColor: '#10b981',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#059669',
+        lineColor: '#64748b',
+        secondaryColor: '#0ea5e9',
+        tertiaryColor: '#1e293b'
+      }
+    });
+  </script>
+</body>
+</html>

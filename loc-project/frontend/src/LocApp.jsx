@@ -589,7 +589,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
         style={{
           background: T.paper,
           position: "relative",
-          backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, ${T.paperLine} 28px)`,
+          backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(218, 213, 196, 0.42) 28px)`,
         }}
       >
         {/* Header — Ngày & Người dùng */}
@@ -656,6 +656,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                 overBudgetCats={overBudgetCats}
                 onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
                 onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
+                onOpenImage={() => { setInitialAddTab("image"); setShowAdd(true); }}
                 transactions={transactions}
                 safeToSpend={safeToSpend}
                 onOpenSettings={() => setShowSettings(true)}
@@ -878,7 +879,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
 
 
 // ---------------- Home ----------------
-function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx, onGoToBudget, onAskTuấn }) {
+function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenImage, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx, onGoToBudget, onAskTuấn }) {
   const recent = transactions.slice(0, 4);
 
   const [hideBalance, setHideBalance] = useState(() => {
@@ -964,134 +965,237 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
 
   return (
     <div>
-      {/* Top Academic Sub-navigation */}
-      <div style={{ display: "flex", gap: 6, marginTop: 10, marginBottom: 8 }}>
-        <div
-          style={{
-            flex: 1, padding: "7px 10px", borderRadius: 10, fontSize: 11.5, fontWeight: 700,
-            background: T.teal, color: "#fff",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            boxShadow: "0 2px 6px rgba(31,111,99,0.25)"
-          }}
-        >
-          <span>📊 Tổng quan & Kỷ luật</span>
-        </div>
-        <button
-          onClick={onGoToBudget}
-          style={{
-            flex: 1, padding: "7px 10px", borderRadius: 10, fontSize: 11.5, fontWeight: 600,
-            background: T.card, color: T.ink, border: `1px solid ${T.border}`, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            transition: "all 0.15s"
-          }}
-        >
-          <PiggyBank size={14} color={T.goldDark} />
-          <span>🎯 Kế hoạch 50/30/20</span>
-        </button>
-      </div>
-
+      {/* ── Smart Wallet Card: Số dư ví + Hạn mức Safe-to-Spend tích hợp ── */}
       <div style={{
-        marginTop: 4, background: T.tealDark, borderRadius: 16, padding: "18px 20px",
+        marginTop: 10, background: `linear-gradient(145deg, ${T.tealDark}, #174b43)`,
+        borderRadius: 18, padding: "18px 18px 14px",
         color: "#F1EEE3", position: "relative", overflow: "hidden",
+        boxShadow: "0 6px 20px rgba(18, 63, 56, 0.22)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 500 }}>Số dư hiện tại</span>
+        {/* Số dư Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontSize: 12, opacity: 0.82, fontWeight: 500 }}>Số dư hiện tại</span>
+            <button
+              type="button"
+              onClick={toggleHideBalance}
+              title={hideBalance ? "Hiện số dư" : "Ẩn số dư"}
+              style={{
+                background: "rgba(255,255,255,0.12)",
+                border: "none",
+                cursor: "pointer",
+                padding: "3px 6px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#F1EEE3",
+                borderRadius: 6,
+                transition: "background 0.15s",
+              }}
+            >
+              {hideBalance ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
           <button
-            type="button"
-            onClick={toggleHideBalance}
-            title={hideBalance ? "Hiện số dư" : "Ẩn số dư"}
+            onClick={onOpenSettings}
+            title="Cài đặt hạn mức Safe-to-Spend"
             style={{
-              background: "none",
+              background: "rgba(255,255,255,0.12)",
               border: "none",
               cursor: "pointer",
-              padding: "2px 4px",
+              padding: "4px 8px",
               display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
+              gap: 4,
               color: "#F1EEE3",
-              opacity: 0.75,
-              borderRadius: 4,
-              transition: "opacity 0.15s",
+              borderRadius: 6,
+              fontSize: 11,
+              transition: "background 0.15s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.75"; }}
           >
-            {hideBalance ? <EyeOff size={15} /> : <Eye size={15} />}
+            <Settings size={12} />
+            <span>Cài đặt</span>
           </button>
         </div>
+
+        {/* Số dư to */}
         <div style={{
           fontSize: 28,
           fontWeight: 700,
           fontFamily: "'Space Grotesk',sans-serif",
-          marginTop: 4,
+          marginTop: 6,
           letterSpacing: hideBalance ? "2px" : "normal",
         }}>
           {hideBalance ? "••••••••" : fmtVND(stats.balance)}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 14 }}>
+
+        {/* Thu vs Chi mini row */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px", marginTop: 8, paddingBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             <TrendingUp size={14} color="#D9A441" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 12.5, opacity: 0.9, whiteSpace: "nowrap" }}>Thu: {fmtVND(stats.income)}</span>
+            <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: "nowrap" }}>Thu: {fmtVND(stats.income)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             <TrendingDown size={14} color="#E08D7A" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 12.5, opacity: 0.9, whiteSpace: "nowrap" }}>Chi: {fmtVND(stats.expense)}</span>
+            <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: "nowrap" }}>Chi: {fmtVND(stats.expense)}</span>
+          </div>
+        </div>
+
+        {/* Sub-Card: Hạn mức hôm nay (Safe-to-Spend) */}
+        <div style={{
+          background: "rgba(0, 0, 0, 0.22)",
+          borderRadius: 12,
+          padding: "10px 12px",
+          border: `1px solid ${safeToSpend?.isOverBudget ? "rgba(224, 141, 122, 0.45)" : "rgba(255, 255, 255, 0.12)"}`,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              {safeToSpend?.isOverBudget ? (
+                <ShieldAlert size={15} color="#E08D7A" style={{ flexShrink: 0 }} />
+              ) : (
+                <ShieldCheck size={15} color="#4C8C63" style={{ flexShrink: 0 }} />
+              )}
+              <span style={{ fontSize: 11.5, opacity: 0.92, fontWeight: 600 }}>
+                {safeToSpend?.isOverBudget ? "Đã vượt hạn mức ngày:" : "Hạn mức hôm nay (Safe-to-Spend):"}
+              </span>
+            </div>
+            <span style={{
+              fontSize: 14, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif",
+              color: safeToSpend?.isOverBudget ? "#E08D7A" : "#D9A441"
+            }}>
+              {safeToSpend?.isOverBudget ? `-${fmtVND(safeToSpend.overAmount)}` : fmtVND(safeToSpend?.remainingToday || 0)}
+            </span>
+          </div>
+
+          <div style={{ marginBottom: 6 }}>
+            <ProgressBar
+              value={safeToSpend?.todayExpenses || 0}
+              max={safeToSpend?.dailyLimit || 1}
+              color={safeToSpend?.percentSpent > 80 ? T.gold : "#4C8C63"}
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10.5, opacity: 0.8 }}>
+            <span>Đã chi: {fmtVND(safeToSpend?.todayExpenses || 0)} / {fmtVND(safeToSpend?.dailyLimit || 0)}</span>
+            <span>⏳ Còn {safeToSpend?.daysRemaining} ngày ({safeToSpend?.nextPaydayStr})</span>
           </div>
         </div>
       </div>
 
-      {/* Nút thêm giao dịch bằng giọng nói ngay dưới khung số dư */}
-      <div style={{ marginTop: 10 }}>
+      {/* ── Quick Action Pills (Tiện ích 1 chạm) ── */}
+      <div style={{ display: "flex", gap: 8, marginTop: 12, overflowX: "auto", paddingBottom: 2 }}>
         <button
           onClick={onOpenVoice}
-          className="btn-teal"
           style={{
-            width: "100%",
-            background: `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
-            color: "#fff",
-            border: "none",
-            borderRadius: 14,
-            padding: "12px 16px",
-            fontWeight: 700,
-            fontSize: 14,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 9,
-            boxShadow: "0 3px 12px rgba(31,111,99,0.25)",
-            transition: "all 0.18s ease",
+            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+            background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
           }}
-          title="Nói để thêm giao dịch bằng giọng nói"
         >
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              backgroundColor: "rgba(255,255,255,0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Mic size={16} color="#fff" />
-          </div>
-          <span>Thêm giao dịch bằng giọng nói</span>
+          <Mic size={14} color={T.teal} />
+          <span>Nói để ghi</span>
+        </button>
+
+        <button
+          onClick={onOpenImage}
+          style={{
+            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+            background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
+          }}
+        >
+          <Camera size={14} color="#3E7CA6" />
+          <span>Hóa đơn</span>
+        </button>
+
+        <button
+          onClick={onGoToBudget}
+          style={{
+            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+            background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
+          }}
+        >
+          <PiggyBank size={14} color={T.goldDark} />
+          <span>Kế hoạch 50/30/20</span>
         </button>
       </div>
 
-      {/* Thẻ Chỉ số Kỷ luật & Sức khỏe Tài chính (Financial Discipline & Literacy Index) */}
+      {/* Cảnh báo vượt hạn mức (nếu có) */}
+      {safeToSpend?.isOverBudget && (
+        <div style={{
+          marginTop: 10, background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 12,
+          padding: "10px 12px", display: "flex", gap: 8, alignItems: "center",
+        }}>
+          <AlertTriangle size={16} color={T.brick} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 11.5, color: "#7B2317", lineHeight: 1.4 }}>
+            Hôm nay bạn chi vượt hạn mức <strong>{fmtVND(safeToSpend.overAmount)}</strong>. Hãy tiết chế trong <strong>{safeToSpend.daysRemaining} ngày tới</strong> nhé!
+          </div>
+        </div>
+      )}
+
+      {overBudgetCats.length > 0 && (
+        <div style={{
+          marginTop: 10, background: "#F4E3DE", border: `1px solid ${T.brick}55`, borderRadius: 12,
+          padding: "10px 12px", display: "flex", gap: 8, alignItems: "center",
+        }}>
+          <AlertTriangle size={16} color={T.brick} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 11.5, color: "#6E2E22" }}>
+            Vượt ngân sách danh mục: <strong>{overBudgetCats.join(", ")}</strong>
+          </div>
+        </div>
+      )}
+
+      {/* ── Thẻ Nhắn nhủ từ Trợ lý Tuấn ── */}
       <div style={{
-        marginTop: 12, background: T.card, borderRadius: 16, padding: "14px 16px",
+        marginTop: 12,
+        background: "linear-gradient(135deg, rgba(31,111,99,0.06), rgba(217,164,65,0.09))",
+        border: `1px solid ${T.teal}33`, borderRadius: 14, padding: "12px 14px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+          <Sparkles size={15} color={T.teal} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark }}>
+            Nhắn nhủ từ Trợ lý Tuấn
+          </span>
+        </div>
+        <p style={{ margin: "0 0 8px", fontSize: 11.5, color: T.ink, lineHeight: 1.5, fontStyle: "italic" }}>
+          {stats.wantsPercent > 30
+            ? `Tuấn thấy tháng này bạn dành ${fmtVND(stats.wantsExpense)} cho các khoản Mong muốn (Sở thích). Cân nhắc giảm nhẹ để ví thoải mái hơn nhé!`
+            : safeToSpend?.isOverBudget
+            ? `Hôm nay đã chạm ngưỡng an toàn. Thử áp dụng 'Quy tắc 24h': Chờ 1 ngày trước khi quyết định mua món tiếp theo!`
+            : `"Quản lý tài chính tốt là biết cách chi tiêu có chủ đích cho tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
+        </p>
+        <button
+          onClick={() => onAskTuấn(
+            stats.wantsPercent > 30
+              ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
+              : "Tuấn ơi, giải thích giúp mình bí quyết phân biệt rạch ròi giữa Nhu cầu (Needs) và Mong muốn (Wants) trong đời sống sinh viên trọ với?"
+          )}
+          style={{
+            background: T.card, border: `1px solid ${T.teal}44`, borderRadius: 8,
+            padding: "6px 12px", fontSize: 11.5, fontWeight: 600, color: T.tealDark,
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center"
+          }}
+        >
+          <MessageCircle size={13} color={T.teal} />
+          <span>Tâm sự cùng Tuấn</span>
+        </button>
+      </div>
+
+      {/* ── Thẻ Phong độ Chi tiêu & Cân đối 50/30/20 ── */}
+      <div style={{
+        marginTop: 12, background: T.card, borderRadius: 14, padding: "12px 14px",
         border: `1px solid ${T.border}`,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+        boxShadow: "0 2px 6px rgba(0,0,0,0.02)"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Target size={16} color={T.teal} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: T.tealDark }}>
-              Chỉ số Kỷ luật Tài chính (FLI)
+            <Target size={15} color={T.teal} />
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: T.tealDark }}>
+              Cân đối chi tiêu (50/30/20)
             </span>
           </div>
           <span style={{
@@ -1099,13 +1203,13 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
             background: stats.disciplineScore >= 80 ? "#D1FAE5" : stats.disciplineScore >= 60 ? "#FEF3C7" : "#FEE2E2",
             color: stats.disciplineScore >= 80 ? "#065F46" : stats.disciplineScore >= 60 ? "#92400E" : "#991B1B",
           }}>
-            {stats.disciplineScore >= 80 ? "Xuất sắc" : stats.disciplineScore >= 60 ? "Khá · Đạt chuẩn" : "Cần tiết chế"} ({stats.disciplineScore || 80}/100)
+            {stats.disciplineScore >= 80 ? "Phong độ tốt" : stats.disciplineScore >= 60 ? "Khá chuẩn" : "Cần tiết chế"} ({stats.disciplineScore || 80}/100)
           </span>
         </div>
 
         {/* Thanh tỷ lệ 50/30/20 */}
         <div style={{ marginBottom: 8 }}>
-          <div style={{ height: 10, width: "100%", background: "#E5E7EB", borderRadius: 6, display: "flex", overflow: "hidden" }}>
+          <div style={{ height: 8, width: "100%", background: "#E5E7EB", borderRadius: 6, display: "flex", overflow: "hidden" }}>
             <div
               title={`Thiết yếu: ${stats.needsPercent || 0}%`}
               style={{
@@ -1134,143 +1238,14 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, transacti
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: T.inkSoft }}>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
-            Cần thiết: <strong>{stats.needsPercent || 0}%</strong> (chuẩn ≤50%)
+            Cần thiết: <strong>{stats.needsPercent || 0}%</strong> (≤50%)
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
-            Sở thích: <strong>{stats.wantsPercent || 0}%</strong> (chuẩn ≤30%)
+            Sở thích: <strong>{stats.wantsPercent || 0}%</strong> (≤30%)
           </span>
-        </div>
-
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${T.border}`, fontSize: 11, color: T.inkSoft, lineHeight: 1.45 }}>
-          {stats.wantsPercent > 35 ? (
-            <span style={{ color: "#B45309" }}>
-              ⚠️ Chi tiêu cho Mong muốn (Wants) đang chiếm {stats.wantsPercent}% tổng chi. Hãy suy nghĩ kỹ trước khi mua món đồ tiếp theo nhé!
-            </span>
-          ) : (
-            <span style={{ color: "#047857" }}>
-              ✨ Bạn đang duy trì phân bổ chi tiêu rất lành mạnh! Tỷ lệ nhu cầu thiết yếu đạt chuẩn sinh viên.
-            </span>
-          )}
         </div>
       </div>
-
-      {/* Thẻ Cố vấn Socratic Tuấn - Phản tư hành vi */}
-      <div style={{
-        marginTop: 12, background: "linear-gradient(135deg, rgba(31,111,99,0.08), rgba(217,164,65,0.12))",
-        border: `1px solid ${T.teal}44`, borderRadius: 16, padding: "12px 14px",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-          <Sparkles size={16} color={T.teal} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark, textTransform: "uppercase", letterSpacing: 0.3 }}>
-            Cố vấn Tuấn · Phản tư hôm nay
-          </span>
-        </div>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: T.ink, lineHeight: 1.5, fontStyle: "italic" }}>
-          {stats.wantsPercent > 30
-            ? `Tuấn thấy tháng này bạn đã dành ${fmtVND(stats.wantsExpense)} cho các khoản Mong muốn (Wants). Bạn có nghĩ số tiền này nếu giữ lại sẽ giúp giảm bớt áp lực tài chính những tuần tới không?`
-            : safeToSpend?.isOverBudget
-            ? `Hôm nay đã vượt hạn mức Safe-to-Spend một chút. Trước khi chi khoản tiếp theo, hãy thử áp dụng 'Quy tắc 24h': Trì hoãn 1 ngày xem mình có thực sự cần món đó không nhé?`
-            : `"Chi tiêu thông minh không phải là tằn tiện kham khổ, mà là tỉnh táo nhận diện khoản nào thực sự phục vụ tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
-        </p>
-        <button
-          onClick={() => onAskTuấn(
-            stats.wantsPercent > 30
-              ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
-              : "Tuấn ơi, giải thích giúp mình bí quyết phân biệt rạch ròi giữa Nhu cầu (Needs) và Mong muốn (Wants) trong đời sống sinh viên trọ với?"
-          )}
-          style={{
-            background: T.card, border: `1px solid ${T.teal}66`, borderRadius: 8,
-            padding: "6px 12px", fontSize: 11.5, fontWeight: 600, color: T.tealDark,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center"
-          }}
-        >
-          <MessageCircle size={13} color={T.teal} />
-          <span>Trò chuyện & Phản tư cùng Tuấn</span>
-        </button>
-      </div>
-
-      {/* Thẻ Hạn mức hôm nay (Safe-to-Spend) */}
-      <div style={{
-        marginTop: 12, background: T.card, borderRadius: 16, padding: "14px 16px",
-        border: `1px solid ${safeToSpend?.isOverBudget ? T.brick : T.border}`,
-        position: "relative"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-            {safeToSpend?.isOverBudget ? (
-              <ShieldAlert size={17} color={T.brick} style={{ flexShrink: 0 }} />
-            ) : (
-              <ShieldCheck size={17} color={T.teal} style={{ flexShrink: 0 }} />
-            )}
-            <span style={{ fontSize: 13, fontWeight: 700, color: safeToSpend?.isOverBudget ? T.brick : T.tealDark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              Hạn mức hôm nay (Safe-to-Spend)
-            </span>
-          </div>
-          <button
-            onClick={onOpenSettings}
-            title="Cài đặt kỳ nhận tiền & quỹ dự phòng"
-            style={{
-              display: "flex", alignItems: "center", gap: 3, background: "none",
-              border: "none", cursor: "pointer", color: T.inkSoft, fontSize: 11, padding: "2px 4px", flexShrink: 0,
-            }}
-          >
-            <Settings size={12} />
-            <span>Cài đặt</span>
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 6px" }}>
-          <span style={{
-            fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif",
-            color: safeToSpend?.isOverBudget ? T.brick : T.tealDark
-          }}>
-            {safeToSpend?.isOverBudget ? `-${fmtVND(safeToSpend.overAmount)}` : fmtVND(safeToSpend?.remainingToday || 0)}
-          </span>
-          <span style={{ fontSize: 11, color: safeToSpend?.isOverBudget ? T.brick : T.inkSoft, fontWeight: 500 }}>
-            {safeToSpend?.isOverBudget ? "vượt hạn mức hôm nay!" : "còn được tiêu hôm nay"}
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ marginTop: 8, marginBottom: 8 }}>
-          <ProgressBar
-            value={safeToSpend?.todayExpenses || 0}
-            max={safeToSpend?.dailyLimit || 1}
-            color={safeToSpend?.percentSpent > 80 ? T.gold : T.teal}
-          />
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px 8px", fontSize: 11, color: T.inkSoft }}>
-          <span style={{ whiteSpace: "nowrap" }}>Đã chi: <strong>{fmtVND(safeToSpend?.todayExpenses || 0)}</strong> / {fmtVND(safeToSpend?.dailyLimit || 0)}</span>
-          <span style={{ whiteSpace: "nowrap" }}>⏳ Còn <strong>{safeToSpend?.daysRemaining} ngày</strong> ({safeToSpend?.nextPaydayStr})</span>
-        </div>
-      </div>
-
-      {/* Cảnh báo nếu đã chi vượt hạn mức hôm nay */}
-      {safeToSpend?.isOverBudget && (
-        <div style={{
-          marginTop: 10, background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 12,
-          padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start",
-        }}>
-          <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
-          <div style={{ fontSize: 12, color: "#7B2317", lineHeight: 1.4 }}>
-            <strong>Nhắc nhở chi tiêu hôm nay:</strong> Bạn đã chi vượt hạn mức an toàn <strong>{fmtVND(safeToSpend.overAmount)}</strong>. Hãy tiết chế các khoản chi trong <strong>{safeToSpend.daysRemaining} ngày tới</strong> để tránh cạn ví trước ngày nhận trợ cấp/lương ({safeToSpend.nextPaydayStr})!
-          </div>
-        </div>
-      )}
-
-      {overBudgetCats.length > 0 && (
-        <div style={{
-          marginTop: 12, background: "#F4E3DE", border: `1px solid ${T.brick}55`, borderRadius: 12,
-          padding: "10px 12px", display: "flex", gap: 8, alignItems: "flex-start",
-        }}>
-          <AlertTriangle size={16} color={T.brick} style={{ marginTop: 1, flexShrink: 0 }} />
-          <div style={{ fontSize: 12.5, color: "#6E2E22" }}>
-            Bạn đã vượt ngân sách ở: <strong>{overBudgetCats.join(", ")}</strong>
-          </div>
-        </div>
-      )}
 
       <div style={{ marginTop: 20 }}>
         {/* Header: title + period pills */}
