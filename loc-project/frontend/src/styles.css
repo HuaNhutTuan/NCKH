@@ -415,3 +415,35 @@ button {
   }
 }
 
+/* =========================================================
+   Money Lover Transaction Journal Styles
+   ========================================================= */
+.loc-scroll-ledger {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #E5E7EB transparent;
+}
+
+.loc-scroll-ledger::-webkit-scrollbar {
+  width: 5px;
+}
+
+.loc-scroll-ledger::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 4px;
+}
+
+.money-lover-tx-row {
+  transition: background-color 0.14s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.money-lover-tx-row:hover {
+  background-color: #F9FAFB !important;
+}
+
+.money-lover-tx-row:active {
+  background-color: #F3F4F6 !important;
+  transform: scale(0.995);
+}
+

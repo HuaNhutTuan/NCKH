@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { X, CheckCircle2, AlertTriangle, Utensils, Bus, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse, MoreHorizontal, GraduationCap, Wallet, Coins } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle, Utensils, Bus, Car, BookOpen, Gamepad2, Home, ShoppingBag, HeartPulse, MoreHorizontal, GraduationCap, Wallet, Coins, Trash2 } from "lucide-react";
 import { formatThousands, parseThousands, handleNumericChange } from "../../utils/format";
 
 const EXPENSE_CATS = [
-  { id: "food", label: "Ăn uống", color: "#AE4C3B", Icon: Utensils },
-  { id: "transport", label: "Di chuyển", color: "#3E7CA6", Icon: Bus },
-  { id: "study", label: "Học tập", color: "#1F6F63", Icon: BookOpen },
+  { id: "food", label: "Ăn uống", color: "#334155", Icon: Utensils },
+  { id: "transport", label: "Di chuyển", color: "#D97706", Icon: Car },
+  { id: "study", label: "Giáo dục", color: "#0F766E", Icon: GraduationCap },
   { id: "entertainment", label: "Giải trí", color: "#8B5FBF", Icon: Gamepad2 },
   { id: "housing", label: "Nhà ở", color: "#D9A441", Icon: Home },
   { id: "shopping", label: "Mua sắm", color: "#C97A4A", Icon: ShoppingBag },
@@ -22,7 +22,7 @@ const INCOME_CATS = [
 
 const fmtVND = (n) => Math.round(n).toLocaleString("vi-VN") + " đ";
 
-export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
+export default function EditTxModal({ tx, onClose, onSave, onDelete, safeToSpend }) {
   if (!tx) return null;
 
   const [form, setForm] = useState({
@@ -292,6 +292,31 @@ export default function EditTxModal({ tx, onClose, onSave, safeToSpend }) {
         />
 
         <div style={{ display: "flex", gap: 8 }}>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Bạn có chắc chắn muốn xóa giao dịch này?")) {
+                  onDelete(form.id);
+                  onClose();
+                }
+              }}
+              style={{
+                padding: "11px 14px",
+                borderRadius: 10,
+                border: "1px solid #FCA5A5",
+                background: "#FEF2F2",
+                color: "#DC2626",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title="Xóa giao dịch"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

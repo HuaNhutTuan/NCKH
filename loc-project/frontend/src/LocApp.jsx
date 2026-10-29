@@ -10,7 +10,8 @@ import {
   MoreHorizontal, Coins, ChevronRight, ChevronLeft, Lightbulb, Target, CheckCircle2, LogOut,
   Mic, MicOff, Camera, Type, Loader2, Users, Edit3, ImagePlus, Wand2,
   ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil, User,
-  Eye, EyeOff,
+  Eye, EyeOff, ChevronDown, ChevronUp, Check,
+  HelpCircle, MoreVertical, Globe, ChevronsRight, Car, Receipt,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
@@ -38,25 +39,28 @@ const T = {
 };
 
 const EXPENSE_CATS = [
-  { id: "food", label: "Ăn uống", color: "#AE4C3B", Icon: Utensils },
-  { id: "transport", label: "Di chuyển", color: "#3E7CA6", Icon: Bus },
-  { id: "study", label: "Học tập", color: "#1F6F63", Icon: BookOpen },
-  { id: "entertainment", label: "Giải trí", color: "#8B5FBF", Icon: Gamepad2 },
-  { id: "housing", label: "Nhà ở", color: "#D9A441", Icon: Home },
-  { id: "shopping", label: "Mua sắm", color: "#C97A4A", Icon: ShoppingBag },
-  { id: "health", label: "Sức khỏe", color: "#4C8C63", Icon: HeartPulse },
-  { id: "other", label: "Khác", color: "#8A8778", Icon: MoreHorizontal },
+  { id: "food", label: "Ăn uống", color: "#334155", bg: "#334155", iconColor: "#FFFFFF", Icon: Utensils },
+  { id: "transport", label: "Di chuyển", color: "#D97706", bg: "#FDE68A", iconColor: "#D97706", Icon: Car },
+  { id: "study", label: "Giáo dục", color: "#0F766E", bg: "#99F6E4", iconColor: "#0F766E", Icon: GraduationCap },
+  { id: "entertainment", label: "Giải trí", color: "#7C3AED", bg: "#EDE9FE", iconColor: "#7C3AED", Icon: Gamepad2 },
+  { id: "housing", label: "Nhà ở", color: "#B45309", bg: "#FEF3C7", iconColor: "#B45309", Icon: Home },
+  { id: "shopping", label: "Mua sắm", color: "#BE185D", bg: "#FCE7F3", iconColor: "#BE185D", Icon: ShoppingBag },
+  { id: "health", label: "Sức khỏe", color: "#DC2626", bg: "#FEE2E2", iconColor: "#DC2626", Icon: HeartPulse },
+  { id: "other", label: "Khác", color: "#4B5563", bg: "#F3F4F6", iconColor: "#4B5563", Icon: MoreHorizontal },
 ];
 
 const INCOME_CATS = [
-  { id: "scholarship", label: "Học bổng", color: "#1F6F63", Icon: GraduationCap },
-  { id: "allowance", label: "Trợ cấp gia đình", color: "#D9A441", Icon: Wallet },
-  { id: "parttime", label: "Làm thêm", color: "#4C8C63", Icon: Coins },
-  { id: "other_income", label: "Khác", color: "#8A8778", Icon: MoreHorizontal },
+  { id: "scholarship", label: "Học bổng", color: "#0F766E", bg: "#99F6E4", iconColor: "#0F766E", Icon: GraduationCap },
+  { id: "allowance", label: "Trợ cấp gia đình", color: "#D97706", bg: "#FEF3C7", iconColor: "#D97706", Icon: Wallet },
+  { id: "parttime", label: "Làm thêm", color: "#16A34A", bg: "#DCFCE7", iconColor: "#16A34A", Icon: Coins },
+  { id: "other_income", label: "Khác", color: "#4B5563", bg: "#F3F4F6", iconColor: "#4B5563", Icon: MoreHorizontal },
 ];
 
 const ALL_CATS = [...EXPENSE_CATS, ...INCOME_CATS];
-const catMeta = (id) => ALL_CATS.find((c) => c.id === id) || EXPENSE_CATS[7];
+const catMeta = (id) => {
+  if (id === "education") id = "study";
+  return ALL_CATS.find((c) => c.id === id) || EXPENSE_CATS[7];
+};
 
 const fmtVND = (n) =>
   Math.round(n).toLocaleString("vi-VN") + " đ";
@@ -545,7 +549,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
   // NAV gồm 4 tab học phần + FAB nổi ở giữa
   const NAV_LEFT = [
     { id: "home", label: "Trang chủ", Icon: Wallet },
-    { id: "transactions", label: "Nhật ký", Icon: TrendingUp },
+    { id: "transactions", label: "Sổ giao dịch", Icon: Receipt },
   ];
   const NAV_RIGHT = [
     { id: "learn", label: "Học tập", Icon: GraduationCap },
@@ -592,10 +596,11 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
           backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(218, 213, 196, 0.42) 28px)`,
         }}
       >
-        {/* Header — Ngày & Người dùng */}
-        <div className="loc-shell-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper, flexShrink: 0 }}>
+        {/* Header — Ngày & Người dùng (ẩn khi ở tab sổ giao dịch) */}
+        {tab !== "transactions" && (
+          <div className="loc-shell-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
-            <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Xin chào, {user?.name || "bạn"} 👋</div>
+            <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Xin chào, {user?.name || "bạn"}</div>
             <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.tealDark, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {currentDateVN}
             </div>
@@ -642,38 +647,56 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             )}
           </button>
         </div>
+        )}
 
         {/* Body */}
         {tab !== "chat" ? (
-          <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
-            {dataLoading && (
-              <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
-            )}
-            {!dataLoading && tab === "home" && (
-              <HomeTab
-                stats={stats}
-                pieData={pieData}
-                overBudgetCats={overBudgetCats}
-                onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
-                onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
-                onOpenImage={() => { setInitialAddTab("image"); setShowAdd(true); }}
-                transactions={transactions}
-                safeToSpend={safeToSpend}
-                onOpenSettings={() => setShowSettings(true)}
-                onEditTx={(tx) => setEditingTx(tx)}
-                onDeleteTx={deleteTx}
-                onGoToBudget={() => setTab("budget")}
-                onAskTuấn={(q) => { setTab("chat"); setChatInput(q); }}
-              />
-            )}
-            {!dataLoading && tab === "transactions" && (
-              <TransactionsTab
-                transactions={transactions}
-                onDelete={deleteTx}
-                onEdit={(tx) => setEditingTx(tx)}
-                onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
-              />
-            )}
+          tab === "transactions" ? (
+            <div
+              className="loc-scroll-ledger"
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                paddingBottom: 85,
+                background: "#FFFFFF",
+              }}
+            >
+              {dataLoading && (
+                <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
+              )}
+              {!dataLoading && (
+                <TransactionsTab
+                  transactions={transactions}
+                  balance={stats.balance}
+                  onDelete={deleteTx}
+                  onEdit={(tx) => setEditingTx(tx)}
+                  onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+                  onOpenProfile={() => setShowProfile(true)}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
+              {dataLoading && (
+                <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
+              )}
+              {!dataLoading && tab === "home" && (
+                <HomeTab
+                  stats={stats}
+                  pieData={pieData}
+                  overBudgetCats={overBudgetCats}
+                  onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+                  onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
+                  onOpenImage={() => { setInitialAddTab("image"); setShowAdd(true); }}
+                  transactions={transactions}
+                  safeToSpend={safeToSpend}
+                  onOpenSettings={() => setShowSettings(true)}
+                  onEditTx={(tx) => setEditingTx(tx)}
+                  onDeleteTx={deleteTx}
+                  onGoToBudget={() => setTab("budget")}
+                  onAskTuấn={(q) => { setTab("chat"); setChatInput(q); }}
+                />
+              )}
             {!dataLoading && tab === "budget" && (
               <div>
                 <div style={{ marginTop: 10, marginBottom: 8 }}>
@@ -706,6 +729,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
               />
             )}
           </div>
+          )
         ) : (
           <div className="loc-chat-wrapper">
             {dataLoading ? (
@@ -814,6 +838,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             tx={editingTx}
             onClose={() => setEditingTx(null)}
             onSave={editTransaction}
+            onDelete={deleteTx}
             safeToSpend={safeToSpend}
           />
         )}
@@ -965,6 +990,108 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenIma
 
   return (
     <div>
+      {/* ── Bong bóng chat Trợ lý Tuấn (chuyển lên trên cùng) ── */}
+      <div
+        onClick={() => onAskTuấn(
+          stats.wantsPercent > 30
+            ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
+            : safeToSpend?.isOverBudget
+            ? "Tuấn ơi, hôm nay mình lỡ chi tiêu chạm ngưỡng an toàn ngày rồi, Tuấn cho mình lời khuyên nhé!"
+            : "Chào Tuấn, hôm nay mình nên lưu ý gì về quản lý tài chính và chi tiêu sinh viên không?"
+        )}
+        style={{
+          marginTop: 6,
+          marginBottom: 10,
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-start",
+          cursor: "pointer",
+        }}
+        title="Nhấn để trò chuyện cùng Trợ lý Tuấn"
+      >
+        {/* Avatar Trợ lý Tuấn với chấm online */}
+        <div style={{ position: "relative", flexShrink: 0, marginTop: 2 }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 3px 10px rgba(31,111,99,0.25)",
+            border: `2px solid ${T.card}`,
+          }}>
+            <Sparkles size={18} color="#F1EEE3" />
+          </div>
+          <span style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: "#22C55E",
+            border: `2px solid ${T.paper}`,
+          }} />
+        </div>
+
+        {/* Bong bóng chat (Speech Bubble) tương tác */}
+        <div style={{
+          flex: 1,
+          background: T.card,
+          border: `1px solid ${T.teal}33`,
+          borderRadius: "4px 16px 16px 16px",
+          padding: "10px 12px",
+          boxShadow: "0 3px 10px rgba(31,111,99,0.06)",
+          position: "relative",
+          transition: "transform 0.15s, box-shadow 0.15s",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark }}>Trợ lý Tuấn</span>
+              <span style={{
+                fontSize: 9.5,
+                fontWeight: 600,
+                padding: "1px 6px",
+                borderRadius: 8,
+                background: "rgba(31,111,99,0.08)",
+                color: T.teal,
+              }}>
+                AI Đồng hành
+              </span>
+            </div>
+            <span style={{ fontSize: 10.5, color: T.teal, display: "flex", alignItems: "center", gap: 2, fontWeight: 600 }}>
+              <span>Tâm sự ngay</span>
+              <ChevronRight size={12} />
+            </span>
+          </div>
+
+          <p style={{ margin: "0 0 6px", fontSize: 11.5, color: T.ink, lineHeight: 1.45 }}>
+            {stats.wantsPercent > 30
+              ? `Tuấn thấy tháng này bạn dành ${fmtVND(stats.wantsExpense)} (${stats.wantsPercent}%) cho các khoản Mong muốn. Cân nhắc giảm nhẹ để ví thoải mái hơn nhé!`
+              : safeToSpend?.isOverBudget
+              ? `Hôm nay đã chạm ngưỡng an toàn. Thử áp dụng 'Quy tắc 24h': Chờ 1 ngày trước khi quyết định mua món tiếp theo!`
+              : `"Quản lý tài chính tốt là biết cách chi tiêu có chủ đích cho tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
+          </p>
+
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 10.5,
+            fontWeight: 600,
+            color: T.teal,
+            background: "rgba(31,111,99,0.07)",
+            padding: "2px 8px",
+            borderRadius: 10,
+          }}>
+            <MessageCircle size={11} />
+            <span>Tâm sự cùng Tuấn</span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Smart Wallet Card: Số dư ví + Hạn mức Safe-to-Spend tích hợp ── */}
       <div style={{
         marginTop: 10, background: `linear-gradient(145deg, ${T.tealDark}, #174b43)`,
@@ -1082,45 +1209,34 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenIma
         </div>
       </div>
 
-      {/* ── Quick Action Pills (Tiện ích 1 chạm) ── */}
-      <div style={{ display: "flex", gap: 8, marginTop: 12, overflowX: "auto", paddingBottom: 2 }}>
+      {/* ── Quick Action Pills (2 nút rút gọn: Nói để ghi & Chụp ảnh hóa đơn) ── */}
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <button
           onClick={onOpenVoice}
           style={{
-            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+            flex: 1, padding: "10px 12px", borderRadius: 13, fontSize: 12.5, fontWeight: 600,
             background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
             cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
           }}
+          title="Nói để ghi chép giao dịch nhanh"
         >
-          <Mic size={14} color={T.teal} />
+          <Mic size={15} color={T.teal} />
           <span>Nói để ghi</span>
         </button>
 
         <button
           onClick={onOpenImage}
           style={{
-            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+            flex: 1, padding: "10px 12px", borderRadius: 13, fontSize: 12.5, fontWeight: 600,
             background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
             cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
           }}
+          title="Chụp hình ảnh hóa đơn để lưu giao dịch"
         >
-          <Camera size={14} color="#3E7CA6" />
-          <span>Hóa đơn</span>
-        </button>
-
-        <button
-          onClick={onGoToBudget}
-          style={{
-            flex: 1, padding: "9px 10px", borderRadius: 12, fontSize: 12, fontWeight: 600,
-            background: T.card, color: T.tealDark, border: `1px solid ${T.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-          }}
-        >
-          <PiggyBank size={14} color={T.goldDark} />
-          <span>Kế hoạch 50/30/20</span>
+          <Camera size={15} color="#3E7CA6" />
+          <span>Chụp ảnh hóa đơn</span>
         </button>
       </div>
 
@@ -1149,103 +1265,116 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenIma
         </div>
       )}
 
-      {/* ── Thẻ Nhắn nhủ từ Trợ lý Tuấn ── */}
-      <div style={{
-        marginTop: 12,
-        background: "linear-gradient(135deg, rgba(31,111,99,0.06), rgba(217,164,65,0.09))",
-        border: `1px solid ${T.teal}33`, borderRadius: 14, padding: "12px 14px",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-          <Sparkles size={15} color={T.teal} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark }}>
-            Nhắn nhủ từ Trợ lý Tuấn
-          </span>
-        </div>
-        <p style={{ margin: "0 0 8px", fontSize: 11.5, color: T.ink, lineHeight: 1.5, fontStyle: "italic" }}>
-          {stats.wantsPercent > 30
-            ? `Tuấn thấy tháng này bạn dành ${fmtVND(stats.wantsExpense)} cho các khoản Mong muốn (Sở thích). Cân nhắc giảm nhẹ để ví thoải mái hơn nhé!`
-            : safeToSpend?.isOverBudget
-            ? `Hôm nay đã chạm ngưỡng an toàn. Thử áp dụng 'Quy tắc 24h': Chờ 1 ngày trước khi quyết định mua món tiếp theo!`
-            : `"Quản lý tài chính tốt là biết cách chi tiêu có chủ đích cho tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
-        </p>
-        <button
-          onClick={() => onAskTuấn(
-            stats.wantsPercent > 30
-              ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
-              : "Tuấn ơi, giải thích giúp mình bí quyết phân biệt rạch ròi giữa Nhu cầu (Needs) và Mong muốn (Wants) trong đời sống sinh viên trọ với?"
-          )}
-          style={{
-            background: T.card, border: `1px solid ${T.teal}44`, borderRadius: 8,
-            padding: "6px 12px", fontSize: 11.5, fontWeight: 600, color: T.tealDark,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center"
-          }}
-        >
-          <MessageCircle size={13} color={T.teal} />
-          <span>Tâm sự cùng Tuấn</span>
-        </button>
-      </div>
-
-      {/* ── Thẻ Phong độ Chi tiêu & Cân đối 50/30/20 ── */}
-      <div style={{
-        marginTop: 12, background: T.card, borderRadius: 14, padding: "12px 14px",
-        border: `1px solid ${T.border}`,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.02)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      {/* ── Ô Ngân sách (chuyển xuống từ Kế hoạch 50/30/20) ── */}
+      <div
+        onClick={onGoToBudget}
+        style={{
+          marginTop: 12,
+          background: "linear-gradient(135deg, rgba(217,164,65,0.08), rgba(31,111,99,0.06))",
+          border: `1px solid ${T.gold}44`,
+          borderRadius: 14,
+          padding: "12px 14px",
+          cursor: "pointer",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          transition: "transform 0.15s, box-shadow 0.15s",
+        }}
+        title="Nhấn để xem chi tiết và quản lý Ngân sách"
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Target size={15} color={T.teal} />
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: T.tealDark }}>
-              Cân đối chi tiêu (50/30/20)
+            <PiggyBank size={16} color={T.goldDark} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.tealDark }}>
+              Ngân sách
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "1px 6px",
+              borderRadius: 6,
+              background: "rgba(217,164,65,0.18)",
+              color: "#8C6620",
+            }}>
+              Kế hoạch 50/30/20
             </span>
           </div>
-          <span style={{
-            fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
-            background: stats.disciplineScore >= 80 ? "#D1FAE5" : stats.disciplineScore >= 60 ? "#FEF3C7" : "#FEE2E2",
-            color: stats.disciplineScore >= 80 ? "#065F46" : stats.disciplineScore >= 60 ? "#92400E" : "#991B1B",
-          }}>
-            {stats.disciplineScore >= 80 ? "Phong độ tốt" : stats.disciplineScore >= 60 ? "Khá chuẩn" : "Cần tiết chế"} ({stats.disciplineScore || 80}/100)
-          </span>
-        </div>
-
-        {/* Thanh tỷ lệ 50/30/20 */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ height: 8, width: "100%", background: "#E5E7EB", borderRadius: 6, display: "flex", overflow: "hidden" }}>
-            <div
-              title={`Thiết yếu: ${stats.needsPercent || 0}%`}
-              style={{
-                width: `${Math.min(100, stats.needsPercent || 0)}%`,
-                background: "#10B981", transition: "width 0.4s ease"
-              }}
-            />
-            <div
-              title={`Mong muốn: ${stats.wantsPercent || 0}%`}
-              style={{
-                width: `${Math.min(100 - (stats.needsPercent || 0), stats.wantsPercent || 0)}%`,
-                background: "#F59E0B", transition: "width 0.4s ease"
-              }}
-            />
-            <div
-              title={`Tích lũy: ${Math.max(0, 100 - (stats.needsPercent || 0) - (stats.wantsPercent || 0))}%`}
-              style={{
-                flex: 1,
-                background: "#3B82F6", transition: "width 0.4s ease"
-              }}
-            />
+          <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 11, fontWeight: 600, color: T.teal }}>
+            <span>Chi tiết</span>
+            <ChevronRight size={13} />
           </div>
         </div>
 
-        {/* Chú giải phân bổ Needs vs Wants */}
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: T.inkSoft }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981", display: "inline-block" }} />
-            Cần thiết: <strong>{stats.needsPercent || 0}%</strong> (≤50%)
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block" }} />
-            Sở thích: <strong>{stats.wantsPercent || 0}%</strong> (≤30%)
-          </span>
+        {/* 3 cột tóm tắt 50/30/20 */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 6,
+          background: "rgba(255,255,255,0.65)",
+          borderRadius: 10,
+          padding: "8px 10px",
+          marginBottom: 8,
+          border: `1px solid ${T.border}66`,
+        }}>
+          <div>
+            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Thiết yếu (50%)</div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: T.tealDark, marginTop: 2 }}>
+              {fmtVND(stats.needsExpense || 0)}
+            </div>
+            <div style={{ fontSize: 9.5, color: stats.needsPercent > 50 ? T.brick : T.teal, fontWeight: 600 }}>
+              {stats.needsPercent || 0}% chi tiêu
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Sở thích (30%)</div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: stats.wantsPercent > 30 ? T.brick : "#B45309", marginTop: 2 }}>
+              {fmtVND(stats.wantsExpense || 0)}
+            </div>
+            <div style={{ fontSize: 9.5, color: stats.wantsPercent > 30 ? T.brick : "#B45309", fontWeight: 600 }}>
+              {stats.wantsPercent || 0}% chi tiêu
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Tích lũy (20%)</div>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: stats.balance >= 0 ? "#15803D" : T.brick, marginTop: 2 }}>
+              {stats.balance >= 0 ? fmtVND(stats.balance) : "0 đ"}
+            </div>
+            <div style={{ fontSize: 9.5, color: stats.balance >= 0 ? "#15803D" : T.brick, fontWeight: 600 }}>
+              {stats.balance >= 0 ? "Còn lại" : "Thâm hụt"}
+            </div>
+          </div>
+        </div>
+
+        {/* Thanh phân bổ tỷ lệ chi tiêu */}
+        <div style={{
+          height: 6,
+          borderRadius: 4,
+          background: "#E5E1D3",
+          overflow: "hidden",
+          display: "flex",
+          marginBottom: 4,
+        }}>
+          <div
+            title={`Thiết yếu: ${stats.needsPercent || 0}%`}
+            style={{
+              width: `${Math.min(100, stats.needsPercent || 0)}%`,
+              background: T.teal,
+              transition: "width 0.3s ease",
+            }}
+          />
+          <div
+            title={`Mong muốn: ${stats.wantsPercent || 0}%`}
+            style={{
+              width: `${Math.min(100 - (stats.needsPercent || 0), stats.wantsPercent || 0)}%`,
+              background: stats.wantsPercent > 30 ? T.brick : T.gold,
+              transition: "width 0.3s ease",
+            }}
+          />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: T.inkSoft }}>
+          <span>Mục tiêu: 50% Thiết yếu • 30% Sở thích • 20% Tiết kiệm</span>
+          <span style={{ color: T.teal, fontWeight: 600 }}>Điều chỉnh ngân sách →</span>
         </div>
       </div>
+
 
       <div style={{ marginTop: 20 }}>
         {/* Header: title + period pills */}
@@ -1382,438 +1511,878 @@ function TxRow({ t, onDelete, onEdit }) {
   );
 }
 
-// ---------------- Date Helpers for Transactions ----------------
-function toISODate(d) {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+// ---------------- Money Lover Category Icon Atom ----------------
+function CategoryIconML({ meta }) {
+  const IconComp = meta?.Icon || MoreHorizontal;
+  const bg = meta?.bg || "#F3F4F6";
+  const iconColor = meta?.iconColor || meta?.color || "#111827";
+
+  return (
+    <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginRight: 14 }}>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: bg,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: iconColor,
+        }}
+      >
+        <IconComp size={22} strokeWidth={2.2} />
+      </div>
+      {/* Mini wallet badge */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: -1,
+          right: -1,
+          width: 15,
+          height: 15,
+          borderRadius: 4,
+          background: "#D97706",
+          border: "1.5px solid #FFFFFF",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+        }}
+      >
+        <Wallet size={8} color="#FFFFFF" strokeWidth={2.4} />
+      </div>
+    </div>
+  );
 }
 
-function getWeekRange(refDate) {
-  const d = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
-  const day = d.getDay(); // 0: Chủ Nhật, 1: Thứ Hai ...
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diffToMonday);
-
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const startDate = toISODate(monday);
-  const endDate = toISODate(sunday);
-  const label = `${monday.getDate()}/${monday.getMonth() + 1} - ${sunday.getDate()}/${sunday.getMonth() + 1}/${sunday.getFullYear()}`;
-  return { startDate, endDate, label };
+// ---------------- Helpers for Money Lover Journal ----------------
+function formatVNDAmount(amount) {
+  return Math.abs(Math.round(amount || 0)).toLocaleString("en-US");
 }
 
-function isSamePeriod(period, refDate) {
-  const now = new Date();
-  if (period === "week") {
-    const { startDate, endDate } = getWeekRange(now);
-    const ref = toISODate(refDate);
-    return ref >= startDate && ref <= endDate;
-  }
-  if (period === "month") {
-    return now.getFullYear() === refDate.getFullYear() && now.getMonth() === refDate.getMonth();
-  }
-  if (period === "year") {
-    return now.getFullYear() === refDate.getFullYear();
-  }
-  return true;
+function formatDayTotalVN(amount) {
+  const rounded = Math.round(amount || 0);
+  const formatted = Math.abs(rounded).toLocaleString("en-US");
+  if (rounded < 0) return `-${formatted}`;
+  if (rounded > 0) return `+${formatted}`;
+  return "0";
 }
 
-// ---------------- Transactions ----------------
-function TransactionsTab({ transactions, onDelete, onEdit, onAdd }) {
-  const [period, setPeriod] = useState("month");
-  const [refDate, setRefDate] = useState(() => new Date());
-  const [filterType, setFilterType] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedCat, setSelectedCat] = useState("all");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const PAGE_SIZE = 20;
+function formatBalanceVND(balance) {
+  const rounded = Math.round(balance || 0);
+  const formatted = Math.abs(rounded).toLocaleString("en-US");
+  return (rounded < 0 ? "-" : "") + formatted + " đ";
+}
 
-  function handlePrev() {
-    setCurrentPage(1);
-    setRefDate((prev) => {
-      const next = new Date(prev);
-      if (period === "week") next.setDate(next.getDate() - 7);
-      else if (period === "month") {
-        next.setDate(1);
-        next.setMonth(next.getMonth() - 1);
+function parseTxDate(dateStr) {
+  if (!dateStr) return { day: "", dayName: "", monthYear: "" };
+  const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  const parts = clean.split("-");
+  if (parts.length < 3) return { day: "", dayName: "", monthYear: "" };
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  const dt = new Date(y, m - 1, d);
+  const dayNames = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
+  return {
+    day: String(d).padStart(2, "0"),
+    dayName: isNaN(dt.getTime()) ? "" : dayNames[dt.getDay()],
+    monthYear: `tháng ${m} ${y}`,
+  };
+}
+
+// ---------------- Transactions (Sổ giao dịch / Nhật ký) ----------------
+function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onAdd, onOpenProfile }) {
+  const [refDate, setRefDate] = useState(() => {
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const hasCurrent = transactions.some((t) => (t.date || "").startsWith(currentMonthKey));
+    if (hasCurrent) return now;
+    if (transactions.length > 0) {
+      const dates = transactions
+        .map((t) => (t.date || "").split("T")[0])
+        .filter(Boolean)
+        .sort()
+        .reverse();
+      if (dates[0]) {
+        const [y, m] = dates[0].split("-").map(Number);
+        return new Date(y, m - 1, 1);
       }
-      else if (period === "year") next.setFullYear(next.getFullYear() - 1);
-      return next;
-    });
+    }
+    return now;
+  });
+
+  const [walletFilter, setWalletFilter] = useState("all"); // "all" | "expense" | "income" | "need" | "want"
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  const currMonthLabel = `${String(refDate.getMonth() + 1).padStart(2, "0")}/${refDate.getFullYear()}`;
+  const prevMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+  const prevMonthLabel = `${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}/${prevMonthDate.getFullYear()}`;
+  const nextMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
+  const nextMonthLabel = `${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}/${nextMonthDate.getFullYear()}`;
+
+  function handleMonthChange(delta) {
+    setRefDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   }
 
-  function handleNext() {
-    setCurrentPage(1);
-    setRefDate((prev) => {
-      const next = new Date(prev);
-      if (period === "week") next.setDate(next.getDate() + 7);
-      else if (period === "month") {
-        next.setDate(1);
-        next.setMonth(next.getMonth() + 1);
-      }
-      else if (period === "year") next.setFullYear(next.getFullYear() + 1);
-      return next;
-    });
-  }
-
-  function handleResetCurrent() {
-    setCurrentPage(1);
+  function handleJumpCurrent() {
     setRefDate(new Date());
   }
 
-  function handleSelectPeriod(tabId) {
-    if (period === tabId) {
-      setRefDate(new Date());
-    } else {
-      setPeriod(tabId);
-    }
-    setCurrentPage(1);
-  }
+  const selectedMonthPrefix = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
 
-  function resetAllFilters() {
-    setSelectedCat("all");
-    setSearchKeyword("");
-    setFilterType("all");
-    setCurrentPage(1);
-  }
+  const monthTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const d = (t.date || "").split("T")[0];
+      return d.startsWith(selectedMonthPrefix);
+    });
+  }, [transactions, selectedMonthPrefix]);
 
-  const periodLabel = useMemo(() => {
-    if (period === "week") return getWeekRange(refDate).label;
-    if (period === "month") return `Tháng ${refDate.getMonth() + 1}/${refDate.getFullYear()}`;
-    if (period === "year") return `Năm ${refDate.getFullYear()}`;
-    return "Tất cả";
-  }, [period, refDate]);
-
-  const isCurrent = isSamePeriod(period, refDate);
-
-  const periodTransactions = useMemo(() => {
-    let list = [...transactions];
-    if (period === "week") {
-      const { startDate, endDate } = getWeekRange(refDate);
-      list = list.filter((t) => t.date >= startDate && t.date <= endDate);
-    } else if (period === "month") {
-      const monthPrefix = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
-      list = list.filter((t) => t.date.startsWith(monthPrefix));
-    } else if (period === "year") {
-      const yearPrefix = `${refDate.getFullYear()}-`;
-      list = list.filter((t) => t.date.startsWith(yearPrefix));
-    }
-    return list;
-  }, [transactions, period, refDate]);
-
-  const periodStats = useMemo(() => {
-    const income = periodTransactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = periodTransactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    return { income, expense, balance: income - expense };
-  }, [periodTransactions]);
-
-  const filtered = useMemo(() => {
-    let list = [...periodTransactions];
-    if (filterType === "expense" || filterType === "income") {
-      list = list.filter((t) => t.type === filterType);
-    } else if (filterType === "need") {
+  const filteredTransactions = useMemo(() => {
+    let list = [...monthTransactions];
+    if (walletFilter === "expense") {
+      list = list.filter((t) => t.type === "expense");
+    } else if (walletFilter === "income") {
+      list = list.filter((t) => t.type === "income");
+    } else if (walletFilter === "need") {
       list = list.filter((t) => t.type === "expense" && t.nature !== "want");
-    } else if (filterType === "want") {
+    } else if (walletFilter === "want") {
       list = list.filter((t) => t.type === "expense" && t.nature === "want");
     }
-    if (selectedCat !== "all") list = list.filter((t) => t.cat === selectedCat);
-    if (searchKeyword.trim()) {
-      const kw = searchKeyword.trim().toLowerCase();
-      list = list.filter((t) =>
-        (t.note || "").toLowerCase().includes(kw) ||
-        String(t.amount).includes(kw) ||
-        (t.date || "").includes(kw)
-      );
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter((t) => {
+        const meta = catMeta(t.cat);
+        return (
+          (t.note || "").toLowerCase().includes(q) ||
+          meta.label.toLowerCase().includes(q) ||
+          String(t.amount).includes(q) ||
+          (t.date || "").includes(q)
+        );
+      });
     }
-    return list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.id || 0) - (a.id || 0)));
-  }, [periodTransactions, filterType, selectedCat, searchKeyword]);
 
-  const totalItems = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+    return list;
+  }, [monthTransactions, walletFilter, searchQuery]);
 
-  const paginatedTransactions = useMemo(() => {
-    const start = (validCurrentPage - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, validCurrentPage]);
+  const groupedByDate = useMemo(() => {
+    const map = {};
+    filteredTransactions.forEach((t) => {
+      const dStr = (t.date || "").split("T")[0];
+      if (!map[dStr]) map[dStr] = [];
+      map[dStr].push(t);
+    });
+    const sortedDates = Object.keys(map).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+    return sortedDates.map((dateKey) => {
+      const items = map[dateKey].sort((a, b) => (b.id || 0) - (a.id || 0));
+      const dayTotal = items.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
+      return {
+        dateKey,
+        items,
+        dayTotal,
+        parsed: parseTxDate(dateKey),
+      };
+    });
+  }, [filteredTransactions]);
 
-  const pageNumbers = useMemo(() => {
-    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    const pages = [];
-    if (validCurrentPage <= 3) pages.push(1, 2, 3, 4, "...", totalPages);
-    else if (validCurrentPage >= totalPages - 2) pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-    else pages.push(1, "...", validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, "...", totalPages);
-    return pages;
-  }, [totalPages, validCurrentPage]);
-
-  const displayCats = filterType === "income" ? [
-    { id: "scholarship", label: "Học bổng", color: "#1F6F63", Icon: GraduationCap },
-    { id: "allowance",   label: "Trợ cấp",   color: "#D9A441", Icon: Wallet },
-    { id: "parttime",    label: "Làm thêm",  color: "#4C8C63", Icon: Coins },
-    { id: "other_income",label: "Khác",      color: "#8A8778", Icon: MoreHorizontal },
-  ] : EXPENSE_CATS;
-
-  const hasActiveFilter = selectedCat !== "all" || searchKeyword || filterType !== "all";
-
-  // btn style helpers
-  const navBtnStyle = {
-    background: "transparent", border: `1px solid ${T.border}`, borderRadius: 6,
-    color: T.ink, cursor: "pointer", padding: "2px 4px",
-    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-  };
+  const walletName = useMemo(() => {
+    if (walletFilter === "expense") return "Khoản chi";
+    if (walletFilter === "income") return "Khoản thu";
+    if (walletFilter === "need") return "Thiết yếu";
+    if (walletFilter === "want") return "Mong muốn";
+    return "Tổng cộng";
+  }, [walletFilter]);
 
   return (
-    <div style={{ paddingBottom: 8 }}>
-
-      {/* ── Row 1: Header ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, marginBottom: 10 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", color: T.ink }}>
-          Lịch sử giao dịch
-        </div>
+    <div style={{ background: "#FFFFFF", minHeight: "100%", width: "100%" }}>
+      {/* ── Top Bar ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px 8px",
+          background: "#FFFFFF",
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+        }}
+      >
+        {/* Left: Help button */}
         <button
-          onClick={onAdd}
-          className="btn-teal"
-          style={{
-            background: T.teal, color: "#fff", border: "none", borderRadius: 8,
-            padding: "6px 11px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 4,
-            boxShadow: "0 2px 6px rgba(31,111,99,0.2)",
-          }}
+          onClick={() => setShowHelp(true)}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", borderRadius: "50%" }}
+          title="Trợ giúp"
         >
-          <Plus size={14} /> Thêm
+          <HelpCircle size={22} color="#1F2937" strokeWidth={1.8} />
         </button>
-      </div>
 
-      {/* ── Row 2: Period tabs + navigation (chung 1 hàng) ── */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 4,
-        marginBottom: 8,
-        minWidth: 0,
-      }}>
-        <div style={{ display: "flex", gap: 2, background: T.paperLine, borderRadius: 8, padding: 2.5, flexShrink: 0 }}>
-          {[
-            { id: "week", label: "Tuần" },
-            { id: "month", label: "Tháng" },
-            { id: "year", label: "Năm" },
-            { id: "all", label: "Tất cả" },
-          ].map((tab) => {
-            const active = period === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleSelectPeriod(tab.id)}
+        {/* Center: Dropdown badge */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => {
+              setShowWalletMenu(!showWalletMenu);
+              setShowMoreMenu(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 14px",
+              background: "#F3F4F6",
+              border: "none",
+              borderRadius: 20,
+              cursor: "pointer",
+              color: "#1F2937",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            <Globe size={16} color="#0D9488" strokeWidth={2} />
+            <span>{walletName}</span>
+            <ChevronDown size={14} color="#6B7280" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showWalletMenu && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 100 }}
+                onClick={() => setShowWalletMenu(false)}
+              />
+              <div
                 style={{
-                  padding: "3px 6px", fontSize: 10.5, fontWeight: active ? 700 : 500,
-                  color: active ? "#fff" : T.inkSoft,
-                  background: active ? T.teal : "transparent",
-                  border: "none", borderRadius: 6, cursor: "pointer",
-                  transition: "all 0.12s ease",
-                  whiteSpace: "nowrap",
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 220,
+                  background: "#FFFFFF",
+                  borderRadius: 12,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                  border: "1px solid #E5E7EB",
+                  zIndex: 101,
+                  overflow: "hidden",
+                  padding: "4px 0",
                 }}
               >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {period !== "all" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, marginLeft: "auto" }}>
-            <button onClick={handlePrev} style={navBtnStyle}><ChevronLeft size={13} /></button>
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.ink, fontFamily: "'Space Grotesk',sans-serif", whiteSpace: "nowrap" }}>
-              {periodLabel}
-            </span>
-            {!isCurrent ? (
-              <button onClick={handleResetCurrent} style={{ background: T.paperLine, border: "none", borderRadius: 4, fontSize: 9, fontWeight: 600, color: T.tealDark, padding: "2px 4px", cursor: "pointer", whiteSpace: "nowrap" }}>
-                Hiện tại
-              </button>
-            ) : (
-              <span style={{ background: T.teal + "20", color: T.tealDark, borderRadius: 4, fontSize: 9, fontWeight: 600, padding: "2px 4px", whiteSpace: "nowrap" }}>
-                {period === "week" ? "Tuần này" : period === "month" ? "Tháng này" : "Năm nay"}
-              </span>
-            )}
-            <button onClick={handleNext} style={navBtnStyle}><ChevronRight size={13} /></button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Row 3: Summary bar ── */}
-      <div style={{ display: "flex", background: T.card, border: `1px solid ${T.border}`, borderRadius: 10, overflow: "hidden", marginBottom: 10 }}>
-        {[
-          { label: "Tổng thu",  value: `+${fmtVND(periodStats.income)}`,  color: T.teal },
-          { label: "Tổng chi",  value: `-${fmtVND(periodStats.expense)}`, color: T.brick },
-          { label: "Còn lại",   value: `${periodStats.balance >= 0 ? "+" : ""}${fmtVND(periodStats.balance)}`, color: periodStats.balance >= 0 ? T.tealDark : T.brick },
-        ].map((s, i) => (
-          <div key={i} style={{ flex: 1, minWidth: 0, padding: "6px 4px", borderRight: i < 2 ? `1px solid ${T.border}` : "none", textAlign: "center" }}>
-            <div style={{ fontSize: 9.5, color: T.inkSoft }}>{s.label}</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: s.color, fontFamily: "'Space Grotesk',sans-serif", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Row 4: Search + Type filter ── */}
-      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-        <div style={{ position: "relative", flex: "1 1 140px", minWidth: 0 }}>
-          <Search size={13} color={T.inkSoft} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-          <input
-            type="text"
-            placeholder="Tìm giao dịch..."
-            value={searchKeyword}
-            onChange={(e) => { setSearchKeyword(e.target.value); setCurrentPage(1); }}
-            style={{
-              width: "100%", padding: "6px 26px 6px 26px",
-              borderRadius: 8, border: `1px solid ${searchKeyword ? T.teal : T.border}`,
-              fontSize: 12, background: T.card, color: T.ink, outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-          {searchKeyword && (
-            <button onClick={() => { setSearchKeyword(""); setCurrentPage(1); }} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.inkSoft, display: "flex", alignItems: "center", padding: 1 }}>
-              <X size={11} />
-            </button>
+                {[
+                  { id: "all", label: "Tất cả ví (Tổng cộng)" },
+                  { id: "expense", label: "Chỉ khoản chi tiêu" },
+                  { id: "income", label: "Chỉ khoản thu nhập" },
+                  { id: "need", label: "🟢 Thiết yếu (Needs)" },
+                  { id: "want", label: "🟡 Mong muốn (Wants)" },
+                ].map((item) => {
+                  const isSelected = walletFilter === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setWalletFilter(item.id);
+                        setShowWalletMenu(false);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "9px 14px",
+                        textAlign: "left",
+                        background: isSelected ? "#F3F4F6" : "transparent",
+                        border: "none",
+                        fontSize: 13,
+                        fontWeight: isSelected ? 600 : 400,
+                        color: isSelected ? "#0D9488" : "#374151",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      {isSelected && <Check size={14} color="#0D9488" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
-        <div style={{ display: "flex", gap: 3, flexShrink: 0, overflowX: "auto" }}>
-          {[
-            { id: "all",     label: "Tất cả" },
-            { id: "expense", label: "Chi" },
-            { id: "income",  label: "Thu" },
-            { id: "need",    label: "🟢 Thiết yếu" },
-            { id: "want",    label: "🟡 Mong muốn" },
-          ].map((f) => {
-            const active = filterType === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => { setFilterType(f.id); setSelectedCat("all"); setCurrentPage(1); }}
-                style={{
-                  background: active ? T.ink : "transparent",
-                  color: active ? "#fff" : T.inkSoft,
-                  border: `1px solid ${active ? T.ink : T.border}`,
-                  borderRadius: 16, padding: "4px 9px",
-                  fontSize: 11, fontWeight: active ? 600 : 500, cursor: "pointer",
-                }}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* ── Row 5: Category chips (cuộn ngang) ── */}
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none", msOverflowStyle: "none" }}>
-          {displayCats.map((c) => {
-            const active = selectedCat === c.id;
-            return (
-              <button
-                key={c.id}
-                onClick={() => { setSelectedCat(active ? "all" : c.id); setCurrentPage(1); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", borderRadius: 20, flexShrink: 0,
-                  border: active ? `1.5px solid ${c.color}` : `1px solid ${T.border}`,
-                  background: active ? c.color + "15" : T.card,
-                  cursor: "pointer", fontSize: 10.5,
-                  color: active ? c.color : T.inkSoft,
-                  fontWeight: active ? 700 : 500,
-                  transition: "all 0.12s ease",
-                }}
-              >
-                <c.Icon size={12} color={active ? c.color : T.inkSoft} strokeWidth={active ? 2.2 : 1.7} />
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
-        {hasActiveFilter && (
+        {/* Right: Search and More options */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <button
-            onClick={resetAllFilters}
-            style={{ marginTop: 5, background: "none", border: "none", padding: 0, fontSize: 10.5, color: T.inkSoft, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}
+            onClick={() => setShowSearch(!showSearch)}
+            style={{
+              background: showSearch ? "#F3F4F6" : "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 6,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="Tìm kiếm"
           >
-            <X size={9} /> Bỏ tất cả bộ lọc
+            <Search size={22} color={showSearch ? "#0D9488" : "#1F2937"} strokeWidth={1.8} />
           </button>
-        )}
+
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => {
+                setShowMoreMenu(!showMoreMenu);
+                setShowWalletMenu(false);
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: "50%", display: "flex", alignItems: "center" }}
+              title="Tùy chọn khác"
+            >
+              <MoreVertical size={22} color="#1F2937" strokeWidth={1.8} />
+            </button>
+
+            {/* More Menu Dropdown */}
+            {showMoreMenu && (
+              <>
+                <div
+                  style={{ position: "fixed", inset: 0, zIndex: 100 }}
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    right: 0,
+                    width: 190,
+                    background: "#FFFFFF",
+                    borderRadius: 12,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    border: "1px solid #E5E7EB",
+                    zIndex: 101,
+                    overflow: "hidden",
+                    padding: "4px 0",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      onAdd && onAdd();
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 13,
+                      color: "#374151",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Plus size={15} color="#0D9488" /> Thêm giao dịch mới
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setShowSearch(true);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      background: "transparent",
+                      border: "none",
+                      fontSize: 13,
+                      color: "#374151",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Search size={15} color="#374151" /> Tìm kiếm giao dịch
+                  </button>
+                  {onOpenProfile && (
+                    <button
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        onOpenProfile();
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        textAlign: "left",
+                        background: "transparent",
+                        border: "none",
+                        fontSize: 13,
+                        color: "#374151",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <User size={15} color="#374151" /> Hồ sơ cá nhân
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      setWalletFilter("all");
+                      setSearchQuery("");
+                      setShowSearch(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      background: "transparent",
+                      border: "none",
+                      borderTop: "1px solid #F3F4F6",
+                      fontSize: 13,
+                      color: "#6B7280",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <X size={15} color="#6B7280" /> Bỏ tất cả bộ lọc
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* ── Đếm số giao dịch ── */}
-      {totalItems > 0 && (
-        <div style={{ fontSize: 10.5, color: T.inkSoft, marginBottom: 5 }}>
-          {totalItems} giao dịch{hasActiveFilter ? " phù hợp" : ""}
+      {/* ── Search Bar ── */}
+      {showSearch && (
+        <div style={{ padding: "0 16px 12px", background: "#FFFFFF", borderBottom: "1px solid #F3F4F6" }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <Search size={16} color="#9CA3AF" style={{ position: "absolute", left: 10, pointerEvents: "none" }} />
+            <input
+              type="text"
+              placeholder="Tìm theo ghi chú, số tiền, ngày..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "8px 30px 8px 34px",
+                borderRadius: 10,
+                border: "1px solid #E5E7EB",
+                background: "#F9FAFB",
+                fontSize: 13,
+                outline: "none",
+                boxSizing: "border-box",
+                color: "#1F2937",
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{ position: "absolute", right: 8, background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
+              >
+                <X size={14} color="#9CA3AF" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Danh sách giao dịch ── */}
-      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 10 }}>
-        {totalItems === 0 ? (
-          <div style={{ padding: "20px 16px", textAlign: "center" }}>
-            {hasActiveFilter ? (
-              <div>
-                <EmptyNote text="Không tìm thấy giao dịch phù hợp với bộ lọc." />
-                <button
-                  onClick={resetAllFilters}
-                  style={{ marginTop: 8, background: T.teal, color: "#fff", border: "none", borderRadius: 8, padding: "5px 14px", fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Đặt lại bộ lọc
-                </button>
-              </div>
-            ) : (
-              <EmptyNote text="Không có giao dịch nào trong khoảng thời gian này." />
-            )}
-          </div>
-        ) : (
-          paginatedTransactions.map((t) => <TxRow key={t.id} t={t} onDelete={onDelete} onEdit={onEdit} />)
-        )}
+      {/* ── Balance Section ── */}
+      <div style={{ textAlign: "center", padding: "10px 16px 12px", background: "#FFFFFF" }}>
+        <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 4 }}>
+          Số dư
+        </div>
+        <div
+          style={{
+            fontSize: 27,
+            fontWeight: 700,
+            color: "#111827",
+            fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+            letterSpacing: -0.3,
+          }}
+        >
+          {formatBalanceVND(balance)}
+        </div>
       </div>
 
-      {/* ── Phân trang (chỉ hiện khi > PAGE_SIZE) ── */}
-      {totalItems > PAGE_SIZE && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6, padding: "4px 0" }}>
-          <div style={{ fontSize: 10.5, color: T.inkSoft }}>
-            {(validCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(validCurrentPage * PAGE_SIZE, totalItems)} / {totalItems}
+      {/* ── Month Navigation Carousel ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "2px 16px 10px",
+          background: "#FFFFFF",
+          borderBottom: "1px solid #ECEEF1",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, gap: 20 }}>
+          {/* Previous Month */}
+          <button
+            onClick={() => handleMonthChange(-1)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#9CA3AF",
+              fontSize: 14,
+              fontWeight: 500,
+              padding: "4px 8px",
+            }}
+          >
+            {prevMonthLabel}
+          </button>
+
+          {/* Selected Month */}
+          <div style={{ textAlign: "center", position: "relative", padding: "4px 8px" }}>
+            <div style={{ color: "#111827", fontSize: 15, fontWeight: 700 }}>
+              {currMonthLabel}
+            </div>
+            <div
+              style={{
+                width: 36,
+                height: 3.5,
+                background: "#111827",
+                borderRadius: 2,
+                margin: "4px auto 0",
+              }}
+            />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+
+          {/* Next Month */}
+          <button
+            onClick={() => handleMonthChange(1)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#9CA3AF",
+              fontSize: 14,
+              fontWeight: 500,
+              padding: "4px 8px",
+            }}
+          >
+            {nextMonthLabel}
+          </button>
+        </div>
+
+        {/* Jump to current month button ⏭ */}
+        <button
+          onClick={handleJumpCurrent}
+          title="Về tháng hiện tại"
+          style={{
+            position: "absolute",
+            right: 16,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: "#FFFFFF",
+            border: "1px solid #E5E7EB",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#111827",
+          }}
+        >
+          <ChevronsRight size={17} strokeWidth={2.4} />
+        </button>
+      </div>
+
+      {/* ── Transaction List grouped by Day ── */}
+      {groupedByDate.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 20px", color: "#6B7280" }}>
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: "50%",
+              background: "#F3F4F6",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
+              color: "#9CA3AF",
+            }}
+          >
+            <Receipt size={28} strokeWidth={1.8} />
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>
+            {searchQuery ? "Không tìm thấy giao dịch" : `Chưa có giao dịch trong tháng ${currMonthLabel}`}
+          </div>
+          <div style={{ fontSize: 12.5, color: "#6B7280", maxWidth: 260, margin: "0 auto 18px", lineHeight: 1.4 }}>
+            {searchQuery
+              ? `Không có giao dịch nào khớp với "${searchQuery}". Hãy thử tìm kiếm từ khóa khác.`
+              : "Bạn chưa ghi chép khoản thu chi nào trong tháng này."}
+          </div>
+          {searchQuery ? (
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={validCurrentPage <= 1}
-              style={{ ...navBtnStyle, padding: "3px 7px", fontSize: 11, color: validCurrentPage <= 1 ? "#bbb" : T.ink, cursor: validCurrentPage <= 1 ? "not-allowed" : "pointer", gap: 2 }}
+              onClick={() => setSearchQuery("")}
+              style={{
+                background: "#0D9488",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 10,
+                padding: "8px 18px",
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
             >
-              <ChevronLeft size={12} /> Trước
+              Xóa tìm kiếm
             </button>
-            {pageNumbers.map((p, idx) =>
-              p === "..." ? (
-                <span key={`d-${idx}`} style={{ padding: "0 3px", color: T.inkSoft, fontSize: 11 }}>…</span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
+          ) : (
+            <button
+              onClick={onAdd}
+              style={{
+                background: "#0D9488",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 10,
+                padding: "9px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(13,148,136,0.3)",
+              }}
+            >
+              + Thêm giao dịch ngay
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ background: "#FFFFFF" }}>
+          {groupedByDate.map((group) => (
+            <div key={group.dateKey} style={{ borderBottom: "1px solid #ECEEF1" }}>
+              {/* Day Header Row */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px 8px",
+                  background: "#FFFFFF",
+                  borderBottom: "1px solid #ECEEF1",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {/* Large Day Number */}
+                  <div
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 700,
+                      fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+                      color: "#111827",
+                      lineHeight: 1,
+                      marginRight: 10,
+                      minWidth: 42,
+                    }}
+                  >
+                    {group.parsed.day}
+                  </div>
+                  {/* Day of Week & Month/Year */}
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", lineHeight: 1.2 }}>
+                      {group.parsed.dayName}
+                    </span>
+                    <span style={{ fontSize: 11.5, color: "#6B7280", lineHeight: 1.2, marginTop: 2 }}>
+                      {group.parsed.monthYear}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Day Total */}
+                <div
                   style={{
-                    minWidth: 24, height: 24, borderRadius: 5,
-                    border: p === validCurrentPage ? "none" : `1px solid ${T.border}`,
-                    background: p === validCurrentPage ? T.teal : T.card,
-                    color: p === validCurrentPage ? "#fff" : T.ink,
-                    fontSize: 11, fontWeight: p === validCurrentPage ? 700 : 500,
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+                    color: group.dayTotal > 0 ? "#10B981" : "#111827",
                   }}
                 >
-                  {p}
-                </button>
-              )
-            )}
+                  {formatDayTotalVN(group.dayTotal)}
+                </div>
+              </div>
+
+              {/* Transactions in Day */}
+              <div>
+                {group.items.map((t, idx) => {
+                  const meta = catMeta(t.cat);
+                  return (
+                    <div
+                      key={t.id || idx}
+                      onClick={() => onEdit && onEdit(t)}
+                      className="money-lover-tx-row"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "11px 16px",
+                        background: "#FFFFFF",
+                        borderBottom: "1px solid #F3F4F6",
+                        cursor: "pointer",
+                        transition: "background-color 0.12s ease",
+                      }}
+                    >
+                      <CategoryIconML meta={meta} />
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 500,
+                            color: "#111827",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {meta.label}
+                        </div>
+                        {t.note && t.note.trim() && t.note.trim() !== meta.label && (
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: "#6B7280",
+                              marginTop: 2,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t.note}
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 600,
+                          fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+                          color: t.type === "income" ? "#10B981" : "#EB5757",
+                          flexShrink: 0,
+                          marginLeft: 10,
+                        }}
+                      >
+                        {t.type === "income" ? `+${formatVNDAmount(t.amount)}` : formatVNDAmount(t.amount)}
+                      </div>
+
+                      {onDelete && (
+                        <button
+                          type="button"
+                          title="Xóa giao dịch"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Bạn có chắc muốn xóa giao dịch này?")) {
+                              onDelete(t.id);
+                            }
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#D1D5DB",
+                            padding: 4,
+                            marginLeft: 6,
+                            borderRadius: 4,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "#EF4444")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "#D1D5DB")}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Help Modal ── */}
+      {showHelp && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            style={{
+              background: "#FFFFFF",
+              borderRadius: 16,
+              padding: "20px 24px",
+              maxWidth: 360,
+              width: "100%",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "#CCFBF1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#0D9488",
+                }}
+              >
+                <HelpCircle size={20} />
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>
+                Sổ giao dịch (Nhật ký)
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, marginBottom: 16 }}>
+              Đây là nơi ghi chép và tổng hợp chi tiết các giao dịch tài chính hàng ngày của bạn theo từng tháng.
+              <br /><br />
+              • <b>Số dư:</b> Tổng số dư ngân quỹ hiện có của bạn.<br />
+              • <b>Theo ngày:</b> Các khoản thu chi được gom nhóm theo từng ngày để bạn nắm rõ lịch sử tiêu dùng.<br />
+              • <b>Chỉnh sửa/Xóa:</b> Bấm vào bất kỳ dòng giao dịch nào để xem chi tiết hoặc chỉnh sửa.
+            </div>
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={validCurrentPage >= totalPages}
-              style={{ ...navBtnStyle, padding: "3px 7px", fontSize: 11, color: validCurrentPage >= totalPages ? "#bbb" : T.ink, cursor: validCurrentPage >= totalPages ? "not-allowed" : "pointer", gap: 2 }}
+              onClick={() => setShowHelp(false)}
+              style={{
+                width: "100%",
+                padding: "10px 0",
+                borderRadius: 10,
+                background: "#0D9488",
+                color: "#FFFFFF",
+                border: "none",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
             >
-              Sau <ChevronRight size={12} />
+              Đã hiểu
             </button>
           </div>
         </div>
@@ -2573,6 +3142,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
 // ---------------- Add transaction modal (4 tabs: manual / text / voice / image) ----------------
 function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, safeToSpend, initialTab = "manual" }) {
   const [inputTab, setInputTab] = useState(initialTab); // "manual" | "text" | "voice" | "image"
+  const [showCatList, setShowCatList] = useState(false);
   const [nlText, setNlText] = useState(""); // natural language input
   const [isListening, setIsListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
@@ -2789,44 +3359,51 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
           </button>
         </div>
 
-        {/* Input-mode tabs */}
-        <div style={{ display: "flex", gap: 5, padding: "0 16px 12px", borderBottom: `1px solid ${T.border}` }}>
-          {TABS.map(({ id, label, Icon }) => {
-            const isVoiceDisabled = id === "voice" && !speechSupported;
-            const active = inputTab === id;
-            return (
-              <button
-                key={id}
-                disabled={isVoiceDisabled}
-                onClick={() => { setInputTab(id); setAiResult(null); setAiError(""); }}
-                title={isVoiceDisabled ? "Trình duyệt không hỗ trợ Voice" : label}
-                style={{
-                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "7px 3px", borderRadius: 10, cursor: isVoiceDisabled ? "not-allowed" : "pointer",
-                  border: `1px solid ${active ? T.teal : T.border}`,
-                  background: active ? T.teal + "18" : T.card,
-                  color: isVoiceDisabled ? T.border : active ? T.teal : T.inkSoft,
-                  opacity: isVoiceDisabled ? 0.45 : 1,
-                  fontSize: 10, fontWeight: active ? 700 : 500, minWidth: 0,
-                }}
-              >
-                <Icon size={16} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", textAlign: "center" }}>{label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Input-mode tabs - chỉ hiển thị nếu mở từ tính năng khác ngoài nút Thêm thủ công */}
+        {initialTab !== "manual" && (
+          <div style={{ display: "flex", gap: 5, padding: "0 16px 12px", borderBottom: `1px solid ${T.border}` }}>
+            {TABS.map(({ id, label, Icon }) => {
+              const isVoiceDisabled = id === "voice" && !speechSupported;
+              const active = inputTab === id;
+              return (
+                <button
+                  key={id}
+                  disabled={isVoiceDisabled}
+                  onClick={() => { setInputTab(id); setAiResult(null); setAiError(""); }}
+                  title={isVoiceDisabled ? "Trình duyệt không hỗ trợ Voice" : label}
+                  style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                    padding: "7px 3px", borderRadius: 10, cursor: isVoiceDisabled ? "not-allowed" : "pointer",
+                    border: `1px solid ${active ? T.teal : T.border}`,
+                    background: active ? T.teal + "18" : T.card,
+                    color: isVoiceDisabled ? T.border : active ? T.teal : T.inkSoft,
+                    opacity: isVoiceDisabled ? 0.45 : 1,
+                    fontSize: 10, fontWeight: active ? 700 : 500, minWidth: 0,
+                  }}
+                >
+                  <Icon size={16} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", textAlign: "center" }}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div style={{ padding: "14px 18px 22px" }}>
 
           {/* ── TAB: Manual (original form) ────────────────────────── */}
           {inputTab === "manual" && (
             <>
+              {/* Loại giao dịch: Chi tiêu / Thu nhập */}
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 {["expense", "income"].map((t) => (
                   <button
                     key={t}
-                    onClick={() => setForm((f) => ({ ...f, type: t, cat: t === "expense" ? "food" : "allowance" }))}
+                    type="button"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, type: t, cat: t === "expense" ? "food" : "allowance" }));
+                      setShowCatList(false);
+                    }}
                     style={{
                       flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
                       border: `1px solid ${form.type === t ? T.teal : T.border}`,
@@ -2838,24 +3415,9 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </button>
                 ))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
-                {cats.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setForm((f) => ({ ...f, cat: c.id, nature: (c.id === "entertainment" || c.id === "shopping") ? "want" : (f.type === "expense" ? f.nature : "need") }))}
-                    style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 2px",
-                      borderRadius: 10, cursor: "pointer", minWidth: 0,
-                      border: `1px solid ${form.cat === c.id ? c.color : T.border}`,
-                      background: form.cat === c.id ? c.color + "22" : T.card,
-                    }}
-                  >
-                    <c.Icon size={16} color={c.color} />
-                    <span style={{ fontSize: 9.5, color: T.ink, textAlign: "center", width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 2px" }}>{c.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div>
+
+              {/* Số tiền */}
+              <div style={{ marginBottom: 10 }}>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -2871,7 +3433,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </div>
                 )}
                 {/* Quick amount chips */}
-                <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
+                <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 6, scrollbarWidth: "none" }}>
                   {[10000, 20000, 50000, 100000, 500000].map((quick) => (
                     <button
                       key={quick}
@@ -2901,10 +3463,141 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   )}
                 </div>
               </div>
+
+              {/* Dòng chọn thuộc tính/danh mục dưới số tiền */}
+              <div style={{ marginBottom: 12, position: "relative" }}>
+                <div
+                  onClick={() => setShowCatList((v) => !v)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1px solid ${showCatList ? T.teal : T.border}`,
+                    background: T.card,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                    {(() => {
+                      const selected = cats.find((c) => c.id === form.cat) || cats[0];
+                      if (!selected) return <span style={{ fontSize: 13, color: T.inkSoft }}>Chọn thuộc tính</span>;
+                      const IconComp = selected.Icon;
+                      return (
+                        <>
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              background: selected.color + "22",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <IconComp size={15} color={selected.color} />
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {selected.label}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                    {showCatList ? <ChevronUp size={18} color={T.inkSoft} /> : <ChevronDown size={18} color={T.inkSoft} />}
+                  </div>
+                </div>
+
+                {/* List các thuộc tính hiển thị khi bấm vào */}
+                {showCatList && (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      background: T.card,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 10,
+                      padding: 6,
+                      boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, 1fr)",
+                      gap: 6,
+                      maxHeight: 220,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {cats.map((c) => {
+                      const isSelected = form.cat === c.id;
+                      const IconComp = c.Icon;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({
+                              ...f,
+                              cat: c.id,
+                              nature: (c.id === "entertainment" || c.id === "shopping") ? "want" : (f.type === "expense" ? f.nature : "need"),
+                            }));
+                            setShowCatList(false);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: `1px solid ${isSelected ? c.color : T.border}`,
+                            background: isSelected ? c.color + "18" : "transparent",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            minWidth: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              background: c.color + "22",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <IconComp size={14} color={c.color} />
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: isSelected ? 700 : 500,
+                              color: T.ink,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              flex: 1,
+                            }}
+                          >
+                            {c.label}
+                          </span>
+                          {isSelected && <Check size={14} color={c.color} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {form.type === "expense" && safeToSpend && parseThousands(form.amount) > 0 && parseThousands(form.amount) > safeToSpend.remainingToday && (
                 <div style={{
                   background: "#FFF3F0", border: `1px solid ${T.brick}66`, borderRadius: 10,
-                  padding: "10px 12px", marginBottom: 8, display: "flex", gap: 8, alignItems: "flex-start"
+                  padding: "10px 12px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start"
                 }}>
                   <AlertTriangle size={16} color={T.brick} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div style={{ fontSize: 11.5, color: "#7B2317", lineHeight: 1.4 }}>
@@ -2913,15 +3606,10 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                   </div>
                 </div>
               )}
-              {/* Phân loại Tư duy Sư phạm (Needs vs Wants) */}
+
+              {/* Bố cục Thiết yếu (Needs) & Mong muốn (Wants) - Đã xóa dòng tiêu đề PHÂN LOẠI TƯ DUY TÀI CHÍNH */}
               {form.type === "expense" && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, marginBottom: 5, display: "flex", justifyContent: "space-between" }}>
-                    <span>PHÂN LOẠI TƯ DUY TÀI CHÍNH</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: form.nature === "want" ? "#B45309" : "#047857" }}>
-                      {form.nature === "want" ? "Mong muốn (Wants)" : "Thiết yếu (Needs)"}
-                    </span>
-                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       type="button"
