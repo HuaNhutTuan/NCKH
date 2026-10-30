@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   GraduationCap, Sparkles, HelpCircle, CheckCircle2, XCircle,
   Lightbulb, Calculator, Target, Trophy, BookOpen, AlertTriangle,
-  ChevronRight, RefreshCw, ArrowRight, ShieldCheck, ArrowUpRight
+  ChevronRight, RefreshCw, ArrowRight, ShieldCheck, ArrowUpRight,
+  Clock, Rocket, MessageCircle, ChevronDown, ChevronUp
 } from "lucide-react";
 import { formatThousands, parseThousands } from "../../utils/format";
 
@@ -251,6 +252,7 @@ export default function LearnTab({ onAsk, stats, transactions }) {
 
   // ---------- Sổ tay bài học State ----------
   const [activeLesson, setActiveLesson] = useState(null);
+  const [showDemo, setShowDemo] = useState(false);
 
   const T = {
     teal: "#1F6F63",
@@ -266,11 +268,352 @@ export default function LearnTab({ onAsk, stats, transactions }) {
     border: "#D9D3C1",
   };
 
+  // Mặc định hiển thị màn hình "Tính năng đang phát triển"
+  if (!showDemo) {
+    return (
+      <div style={{ paddingBottom: 24 }}>
+        {/* Hero Banner: Tính năng đang phát triển */}
+        <div
+          style={{
+            marginTop: 10,
+            marginBottom: 16,
+            padding: "24px 20px 20px",
+            background: `linear-gradient(145deg, ${T.tealDark}, #174b43)`,
+            borderRadius: 18,
+            color: "#F1EEE3",
+            textAlign: "center",
+            boxShadow: "0 6px 20px rgba(18, 63, 56, 0.22)",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Biểu tượng trung tâm */}
+          <div
+            style={{
+              width: 58,
+              height: 58,
+              borderRadius: 18,
+              background: "rgba(255, 255, 255, 0.12)",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 12px",
+              color: T.gold,
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
+            }}
+          >
+            <GraduationCap size={32} strokeWidth={2.2} />
+          </div>
+
+          {/* Huy hiệu Tính năng đang phát triển */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(217, 164, 65, 0.2)",
+              color: "#F6C76E",
+              border: "1px solid rgba(217, 164, 65, 0.4)",
+              borderRadius: 20,
+              padding: "4px 12px",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            <Sparkles size={13} />
+            <span>Tính năng đang phát triển</span>
+          </div>
+
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              fontFamily: "'Space Grotesk', sans-serif",
+              color: "#FFFFFF",
+              marginBottom: 6,
+            }}
+          >
+            Góc Học Tập & Rèn Luyện
+          </div>
+
+          <p
+            style={{
+              margin: "0 auto 14px",
+              fontSize: 12.5,
+              color: "rgba(255, 255, 255, 0.85)",
+              lineHeight: 1.5,
+              maxWidth: 340,
+            }}
+          >
+            Học phần Giáo dục & Rèn luyện năng lực tài chính dành riêng cho sinh viên đang được đội ngũ nghiên cứu hoàn thiện nội dung sư phạm và sẽ sớm ra mắt trong bản cập nhật kế tiếp!
+          </p>
+
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              background: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 12,
+              padding: "7px 14px",
+              fontSize: 11.5,
+              color: "#F1EEE3",
+            }}
+          >
+            <Clock size={14} color="#F6C76E" />
+            <span>Dự kiến ra mắt: <strong>Quý 4/2026</strong> (Đề tài NCKH)</span>
+          </div>
+        </div>
+
+        {/* Các module nội dung sắp ra mắt */}
+        <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: "'Space Grotesk', sans-serif",
+              color: T.tealDark,
+              marginBottom: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <Rocket size={16} color={T.teal} />
+            <span>Nội dung dự kiến sẽ ra mắt</span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              {
+                Icon: BookOpen,
+                color: "#0F766E",
+                bg: "#99F6E4",
+                tag: "Cẩm nang vi mô",
+                title: "Bài học Tài chính 3-5 Phút",
+                desc: "Quy tắc 50/30/20, quỹ khẩn cấp sinh viên, cạm bẫy thẻ tín dụng và tư duy tự chủ tài chính.",
+              },
+              {
+                Icon: Calculator,
+                color: "#D97706",
+                bg: "#FEF3C7",
+                tag: "Mô phỏng thực tế",
+                title: "Mô phỏng Bẫy Mua Trả Góp 0%",
+                desc: "Tính toán lãi suất ẩn và quy đổi chi phí cơ hội thành số cốc trà sữa, số giờ làm thêm part-time.",
+              },
+              {
+                Icon: Target,
+                color: "#16A34A",
+                bg: "#DCFCE7",
+                tag: "Rèn luyện hành vi",
+                title: "Thử thách 7 Ngày Tiết Kiệm",
+                desc: "Thử thách tự nấu ăn tại trọ, 3 ngày không trà sữa và theo dõi chi tiêu để nhận huy hiệu kỷ luật.",
+              },
+              {
+                Icon: CheckCircle2,
+                color: "#7C3AED",
+                bg: "#EDE9FE",
+                tag: "Chuẩn OECD/INFE",
+                title: "Đánh giá Năng lực Tài chính (FLS)",
+                desc: "Bộ câu hỏi trắc nghiệm đo lường chỉ số hiểu biết tài chính trước và sau khóa rèn luyện.",
+              },
+            ].map((item, idx) => {
+              const ItemIcon = item.Icon;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: T.card,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 14,
+                    padding: "12px 14px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.02)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: item.bg,
+                      color: item.color,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ItemIcon size={20} strokeWidth={2.2} />
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <span
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          background: item.color + "1A",
+                          color: item.color,
+                          borderRadius: 4,
+                          padding: "1px 6px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {item.tag}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: T.ink,
+                        marginBottom: 3,
+                      }}
+                    >
+                      {item.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11.5,
+                        color: T.inkSoft,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {item.desc}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Thẻ Kết nối Trợ lý AI Tuấn */}
+        <div
+          style={{
+            background: T.card,
+            border: `1px solid ${T.border}`,
+            borderRadius: 16,
+            padding: "16px 18px",
+            textAlign: "center",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.03)",
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: T.ink,
+              marginBottom: 4,
+            }}
+          >
+            Bạn cần giải đáp kiến thức tài chính ngay?
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: T.inkSoft,
+              marginBottom: 12,
+              lineHeight: 1.4,
+            }}
+          >
+            Trợ lý AI Tuấn luôn sẵn sàng giải thích các khái niệm, phân tích chi tiêu và gợi ý thói quen tiết kiệm cho bạn.
+          </div>
+          <button
+            onClick={() => onAsk && onAsk("Chào Tuấn, hãy gợi ý cho mình các kiến thức quản lý tài chính cơ bản nhất dành cho sinh viên")}
+            className="btn-teal"
+            style={{
+              width: "100%",
+              padding: "10px 0",
+              borderRadius: 12,
+              background: T.teal,
+              color: "#FFFFFF",
+              border: "none",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <MessageCircle size={16} />
+            <span>Trò chuyện cùng Trợ lý Tuấn ngay</span>
+          </button>
+        </div>
+
+        {/* Nút mở bản thử nghiệm (Developer / Testing Demo) */}
+        <div style={{ textAlign: "center", marginTop: 8 }}>
+          <button
+            onClick={() => setShowDemo(true)}
+            style={{
+              background: "transparent",
+              border: `1px dashed ${T.border}`,
+              borderRadius: 8,
+              padding: "6px 12px",
+              color: T.inkSoft,
+              fontSize: 11,
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = T.teal)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = T.inkSoft)}
+          >
+            ⚙️ Xem trước bản thử nghiệm tính năng (Developer Demo)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ paddingBottom: 24 }}>
+      {/* Banner thông báo chế độ thử nghiệm */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "#FEF3C7",
+          border: "1px solid #FDE68A",
+          borderRadius: 10,
+          padding: "8px 12px",
+          marginTop: 10,
+          marginBottom: 10,
+          fontSize: 11.5,
+          color: "#92400E",
+        }}
+      >
+        <span>⚠️ Bạn đang ở chế độ xem trước bản thử nghiệm (Demo)</span>
+        <button
+          onClick={() => setShowDemo(false)}
+          style={{
+            background: "#92400E",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 6,
+            padding: "3px 8px",
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Quay lại
+        </button>
+      </div>
+
       {/* Header Banner Sư Phạm */}
       <div style={{
-        marginTop: 10, marginBottom: 12, padding: "16px 18px",
+        marginTop: 4, marginBottom: 12, padding: "16px 18px",
         background: `linear-gradient(135deg, ${T.tealDark}, ${T.teal})`,
         borderRadius: 16, color: "#fff", position: "relative", overflow: "hidden"
       }}>
