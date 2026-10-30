@@ -447,3 +447,40 @@ button {
   transform: scale(0.995);
 }
 
+/* =========================================================
+   Floating AI Chat Bubble (Trợ lý Tuấn)
+   ========================================================= */
+.loc-floating-chat-container {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.loc-chat-bubble {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              box-shadow 0.2s ease,
+              filter 0.15s ease !important;
+}
+
+.loc-chat-bubble:hover {
+  transform: scale(1.08) translateY(-2px);
+  filter: brightness(1.06);
+}
+
+.loc-chat-bubble:active {
+  transform: scale(0.94);
+}
+
+.chat-bubble-pill {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.15s ease;
+  user-select: none;
+}
+
+.chat-bubble-pill:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 4px 14px rgba(31, 111, 99, 0.16) !important;
+}
+
+.chat-bubble-pill:active {
+  transform: scale(0.97);
+}
+
+

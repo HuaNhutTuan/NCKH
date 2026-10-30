@@ -156,6 +156,7 @@ function ProgressBar({ value, max, color }) {
 export default function LocApp() {
   const { token, user, logout, updateUser } = useAuth();
   const [tab, setTab] = useState("home");
+  const [previousTab, setPreviousTab] = useState("home");
   const [showProfile, setShowProfile] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState({});
@@ -553,7 +554,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
   ];
   const NAV_RIGHT = [
     { id: "learn", label: "Học tập", Icon: GraduationCap },
-    { id: "chat", label: "Trợ lý Tuấn", Icon: Sparkles },
+    { id: "budget", label: "Ngân sách", Icon: PiggyBank },
   ];
 
   const currentDateVN = useMemo(() => {
@@ -693,24 +694,10 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                   onOpenSettings={() => setShowSettings(true)}
                   onEditTx={(tx) => setEditingTx(tx)}
                   onDeleteTx={deleteTx}
-                  onGoToBudget={() => setTab("budget")}
-                  onAskTuấn={(q) => { setTab("chat"); setChatInput(q); }}
                 />
               )}
             {!dataLoading && tab === "budget" && (
-              <div>
-                <div style={{ marginTop: 10, marginBottom: 8 }}>
-                  <button
-                    onClick={() => setTab("home")}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      color: T.teal, fontSize: 12, fontWeight: 700, display: "flex",
-                      alignItems: "center", gap: 4, padding: "4px 0"
-                    }}
-                  >
-                    <ChevronLeft size={16} /> Quay lại Trang chủ
-                  </button>
-                </div>
+              <div style={{ paddingBottom: 20 }}>
                 <BudgetTab
                   budgets={budgets}
                   onUpdateBudget={updateBudget}
@@ -723,7 +710,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             )}
             {!dataLoading && tab === "learn" && (
               <LearnTab
-                onAsk={(q) => { setTab("chat"); setChatInput(q); }}
+                onAsk={(q) => { setPreviousTab(tab); setTab("chat"); setChatInput(q); }}
                 stats={stats}
                 transactions={transactions}
               />
@@ -744,6 +731,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                 chatEndRef={chatEndRef}
                 user={user}
                 token={token}
+                onClose={() => setTab(previousTab || "home")}
               />
             )}
           </div>
@@ -764,7 +752,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             return (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => { setPreviousTab(id); setTab(id); }}
                 style={{
                   flex: 1, background: "none", border: "none", cursor: "pointer",
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
@@ -804,7 +792,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             return (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => { setPreviousTab(id); setTab(id); }}
                 style={{
                   flex: 1, background: "none", border: "none", cursor: "pointer",
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
@@ -897,6 +885,101 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
         {/* Toast notification với Undo */}
         <Toast toast={toast} onClose={() => setToast(null)} />
 
+        {/* ── Bong bóng chat Trợ lý Tuấn nổi ở góc dưới màn hình ── */}
+        <div
+          className="loc-floating-chat-container"
+          style={{
+            position: "absolute",
+            right: 16,
+            bottom: "calc(66px + env(safe-area-inset-bottom, 0px))",
+            zIndex: 35,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+          }}
+        >
+          {tab !== "chat" && (
+            <div
+              className="chat-bubble-pill"
+              onClick={() => {
+                setPreviousTab(tab);
+                setTab("chat");
+              }}
+              title="Nhấn để trò chuyện cùng Trợ lý Tuấn"
+              style={{
+                background: T.card,
+                color: T.tealDark,
+                border: `1px solid ${T.teal}44`,
+                padding: "6px 11px",
+                borderRadius: 20,
+                fontSize: 11.5,
+                fontWeight: 700,
+                boxShadow: "0 3px 12px rgba(31,111,99,0.12)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <Sparkles size={13} color={T.goldDark} />
+              <span>Trợ lý Tuấn</span>
+            </div>
+          )}
+          <button
+            className="loc-chat-bubble"
+            onClick={() => {
+              if (tab === "chat") {
+                setTab(previousTab || "home");
+              } else {
+                setPreviousTab(tab);
+                setTab("chat");
+              }
+            }}
+            title={tab === "chat" ? "Đóng trợ lý Tuấn" : "Trò chuyện với Trợ lý Tuấn"}
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: "50%",
+              background: tab === "chat"
+                ? `linear-gradient(135deg, #AE4C3B, #8B3527)`
+                : `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
+              border: "2.5px solid #FFFFFF",
+              boxShadow: tab === "chat"
+                ? "0 4px 16px rgba(174, 76, 59, 0.45)"
+                : "0 4px 16px rgba(31, 111, 99, 0.45)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            {tab === "chat" ? (
+              <X size={22} color="#FFFFFF" strokeWidth={2.6} />
+            ) : (
+              <>
+                <Sparkles size={22} color="#F1EEE3" strokeWidth={2.3} />
+                {/* Chấm xanh online */}
+                <span
+                  style={{
+                    position: "absolute",
+                    bottom: 2,
+                    right: 2,
+                    width: 11,
+                    height: 11,
+                    borderRadius: "50%",
+                    background: "#22C55E",
+                    border: "2px solid #FFFFFF",
+                    boxShadow: "0 0 4px rgba(34,197,94,0.6)",
+                  }}
+                />
+              </>
+            )}
+          </button>
+        </div>
+
       </div>
     </div>
   );
@@ -904,7 +987,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
 
 
 // ---------------- Home ----------------
-function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenImage, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx, onGoToBudget, onAskTuấn }) {
+function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenImage, transactions, safeToSpend, onOpenSettings, onEditTx, onDeleteTx }) {
   const recent = transactions.slice(0, 4);
 
   const [hideBalance, setHideBalance] = useState(() => {
@@ -990,108 +1073,6 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenIma
 
   return (
     <div>
-      {/* ── Bong bóng chat Trợ lý Tuấn (chuyển lên trên cùng) ── */}
-      <div
-        onClick={() => onAskTuấn(
-          stats.wantsPercent > 30
-            ? "Tuấn ơi, tháng này mình chi cho đồ sở thích/mong muốn hơi nhiều, Tuấn gợi ý cho mình cách cân đối lại nhé!"
-            : safeToSpend?.isOverBudget
-            ? "Tuấn ơi, hôm nay mình lỡ chi tiêu chạm ngưỡng an toàn ngày rồi, Tuấn cho mình lời khuyên nhé!"
-            : "Chào Tuấn, hôm nay mình nên lưu ý gì về quản lý tài chính và chi tiêu sinh viên không?"
-        )}
-        style={{
-          marginTop: 6,
-          marginBottom: 10,
-          display: "flex",
-          gap: 10,
-          alignItems: "flex-start",
-          cursor: "pointer",
-        }}
-        title="Nhấn để trò chuyện cùng Trợ lý Tuấn"
-      >
-        {/* Avatar Trợ lý Tuấn với chấm online */}
-        <div style={{ position: "relative", flexShrink: 0, marginTop: 2 }}>
-          <div style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            background: `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 3px 10px rgba(31,111,99,0.25)",
-            border: `2px solid ${T.card}`,
-          }}>
-            <Sparkles size={18} color="#F1EEE3" />
-          </div>
-          <span style={{
-            position: "absolute",
-            bottom: 0,
-            right: 0,
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            background: "#22C55E",
-            border: `2px solid ${T.paper}`,
-          }} />
-        </div>
-
-        {/* Bong bóng chat (Speech Bubble) tương tác */}
-        <div style={{
-          flex: 1,
-          background: T.card,
-          border: `1px solid ${T.teal}33`,
-          borderRadius: "4px 16px 16px 16px",
-          padding: "10px 12px",
-          boxShadow: "0 3px 10px rgba(31,111,99,0.06)",
-          position: "relative",
-          transition: "transform 0.15s, box-shadow 0.15s",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: T.tealDark }}>Trợ lý Tuấn</span>
-              <span style={{
-                fontSize: 9.5,
-                fontWeight: 600,
-                padding: "1px 6px",
-                borderRadius: 8,
-                background: "rgba(31,111,99,0.08)",
-                color: T.teal,
-              }}>
-                AI Đồng hành
-              </span>
-            </div>
-            <span style={{ fontSize: 10.5, color: T.teal, display: "flex", alignItems: "center", gap: 2, fontWeight: 600 }}>
-              <span>Tâm sự ngay</span>
-              <ChevronRight size={12} />
-            </span>
-          </div>
-
-          <p style={{ margin: "0 0 6px", fontSize: 11.5, color: T.ink, lineHeight: 1.45 }}>
-            {stats.wantsPercent > 30
-              ? `Tuấn thấy tháng này bạn dành ${fmtVND(stats.wantsExpense)} (${stats.wantsPercent}%) cho các khoản Mong muốn. Cân nhắc giảm nhẹ để ví thoải mái hơn nhé!`
-              : safeToSpend?.isOverBudget
-              ? `Hôm nay đã chạm ngưỡng an toàn. Thử áp dụng 'Quy tắc 24h': Chờ 1 ngày trước khi quyết định mua món tiếp theo!`
-              : `"Quản lý tài chính tốt là biết cách chi tiêu có chủ đích cho tương lai của bạn. Hôm nay bạn đã ghi chép đầy đủ chưa?"`}
-          </p>
-
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            fontSize: 10.5,
-            fontWeight: 600,
-            color: T.teal,
-            background: "rgba(31,111,99,0.07)",
-            padding: "2px 8px",
-            borderRadius: 10,
-          }}>
-            <MessageCircle size={11} />
-            <span>Tâm sự cùng Tuấn</span>
-          </div>
-        </div>
-      </div>
-
       {/* ── Smart Wallet Card: Số dư ví + Hạn mức Safe-to-Spend tích hợp ── */}
       <div style={{
         marginTop: 10, background: `linear-gradient(145deg, ${T.tealDark}, #174b43)`,
@@ -1264,117 +1245,6 @@ function HomeTab({ stats, pieData, overBudgetCats, onAdd, onOpenVoice, onOpenIma
           </div>
         </div>
       )}
-
-      {/* ── Ô Ngân sách (chuyển xuống từ Kế hoạch 50/30/20) ── */}
-      <div
-        onClick={onGoToBudget}
-        style={{
-          marginTop: 12,
-          background: "linear-gradient(135deg, rgba(217,164,65,0.08), rgba(31,111,99,0.06))",
-          border: `1px solid ${T.gold}44`,
-          borderRadius: 14,
-          padding: "12px 14px",
-          cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-          transition: "transform 0.15s, box-shadow 0.15s",
-        }}
-        title="Nhấn để xem chi tiết và quản lý Ngân sách"
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <PiggyBank size={16} color={T.goldDark} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: T.tealDark }}>
-              Ngân sách
-            </span>
-            <span style={{
-              fontSize: 10,
-              fontWeight: 600,
-              padding: "1px 6px",
-              borderRadius: 6,
-              background: "rgba(217,164,65,0.18)",
-              color: "#8C6620",
-            }}>
-              Kế hoạch 50/30/20
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 11, fontWeight: 600, color: T.teal }}>
-            <span>Chi tiết</span>
-            <ChevronRight size={13} />
-          </div>
-        </div>
-
-        {/* 3 cột tóm tắt 50/30/20 */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 6,
-          background: "rgba(255,255,255,0.65)",
-          borderRadius: 10,
-          padding: "8px 10px",
-          marginBottom: 8,
-          border: `1px solid ${T.border}66`,
-        }}>
-          <div>
-            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Thiết yếu (50%)</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: T.tealDark, marginTop: 2 }}>
-              {fmtVND(stats.needsExpense || 0)}
-            </div>
-            <div style={{ fontSize: 9.5, color: stats.needsPercent > 50 ? T.brick : T.teal, fontWeight: 600 }}>
-              {stats.needsPercent || 0}% chi tiêu
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Sở thích (30%)</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: stats.wantsPercent > 30 ? T.brick : "#B45309", marginTop: 2 }}>
-              {fmtVND(stats.wantsExpense || 0)}
-            </div>
-            <div style={{ fontSize: 9.5, color: stats.wantsPercent > 30 ? T.brick : "#B45309", fontWeight: 600 }}>
-              {stats.wantsPercent || 0}% chi tiêu
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: T.inkSoft, fontWeight: 500 }}>Tích lũy (20%)</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: stats.balance >= 0 ? "#15803D" : T.brick, marginTop: 2 }}>
-              {stats.balance >= 0 ? fmtVND(stats.balance) : "0 đ"}
-            </div>
-            <div style={{ fontSize: 9.5, color: stats.balance >= 0 ? "#15803D" : T.brick, fontWeight: 600 }}>
-              {stats.balance >= 0 ? "Còn lại" : "Thâm hụt"}
-            </div>
-          </div>
-        </div>
-
-        {/* Thanh phân bổ tỷ lệ chi tiêu */}
-        <div style={{
-          height: 6,
-          borderRadius: 4,
-          background: "#E5E1D3",
-          overflow: "hidden",
-          display: "flex",
-          marginBottom: 4,
-        }}>
-          <div
-            title={`Thiết yếu: ${stats.needsPercent || 0}%`}
-            style={{
-              width: `${Math.min(100, stats.needsPercent || 0)}%`,
-              background: T.teal,
-              transition: "width 0.3s ease",
-            }}
-          />
-          <div
-            title={`Mong muốn: ${stats.wantsPercent || 0}%`}
-            style={{
-              width: `${Math.min(100 - (stats.needsPercent || 0), stats.wantsPercent || 0)}%`,
-              background: stats.wantsPercent > 30 ? T.brick : T.gold,
-              transition: "width 0.3s ease",
-            }}
-          />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: T.inkSoft }}>
-          <span>Mục tiêu: 50% Thiết yếu • 30% Sở thích • 20% Tiết kiệm</span>
-          <span style={{ color: T.teal, fontWeight: 600 }}>Điều chỉnh ngân sách →</span>
-        </div>
-      </div>
-
 
       <div style={{ marginTop: 20 }}>
         {/* Header: title + period pills */}
@@ -2936,7 +2806,7 @@ function KnowledgeBaseModal({ token, onClose, onRefresh }) {
 }
 
 // ---------------- Chat ----------------
-function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, chatEndRef, user, token }) {
+function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, chatEndRef, user, token, onClose }) {
   const isAdmin = user?.role === "admin";
   const [showKBModal, setShowKBModal] = useState(false);
   const [kbCount, setKbCount] = useState(4);
@@ -2952,11 +2822,25 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       {/* ── Header bar: Target & Tri thức AI ── */}
-      <div style={{ marginTop: 12, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
+      <div style={{ marginTop: 10, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Quay lại"
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: T.teal, display: "flex", alignItems: "center", gap: 2,
+                fontSize: 12, fontWeight: 700, padding: "4px 4px 4px 0", flexShrink: 0,
+              }}
+            >
+              <ChevronLeft size={16} />
+              <span>Quay lại</span>
+            </button>
+          )}
           <Target size={16} color={T.teal} style={{ flexShrink: 0 }} />
           <div style={{ fontSize: 12, color: T.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            Học tập theo tài liệu & dữ liệu chi tiêu
+            Trợ lý Tuấn • Đồng hành chi tiêu
           </div>
         </div>
 
