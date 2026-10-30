@@ -175,7 +175,13 @@ export default function LocApp() {
   const [dataLoading, setDataLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [initialAddTab, setInitialAddTab] = useState("manual");
-  const [form, setForm] = useState({ type: "expense", cat: "food", nature: "need", amount: "", note: "", date: todayStr() });
+  const [form, setForm] = useState({ type: "expense", cat: "", nature: "need", amount: "", note: "", date: todayStr() });
+
+  const openAddModal = (tab = "manual") => {
+    setForm({ type: "expense", cat: "", nature: "need", amount: "", note: "", date: todayStr() });
+    setInitialAddTab(tab);
+    setShowAdd(true);
+  };
   const [editingTx, setEditingTx] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [toast, setToast] = useState(null);
@@ -365,6 +371,10 @@ export default function LocApp() {
   async function addTransaction() {
     const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) return;
+    if (!form.cat) {
+      setToast({ message: "Vui lòng chọn danh mục cho giao dịch!", type: "error" });
+      return;
+    }
     const txNature = form.nature || (["entertainment", "shopping"].includes(form.cat) ? "want" : "need");
     const payload = {
       type: form.type,
@@ -377,7 +387,7 @@ export default function LocApp() {
     try {
       const { transaction } = await transactionsApi.create(token, payload);
       setTransactions((prev) => [{ ...transaction, cat: transaction.category, nature: transaction.nature || txNature, amount: Number(transaction.amount) }, ...prev]);
-      setForm({ type: "expense", cat: "food", nature: "need", amount: "", note: "", date: todayStr() });
+      setForm({ type: "expense", cat: "", nature: "need", amount: "", note: "", date: todayStr() });
       setShowAdd(false);
       setToast({ message: `Đã lưu giao dịch: ${fmtVND(amt)}!`, type: "success" });
     } catch (err) {
@@ -681,7 +691,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                   balance={stats.balance}
                   onDelete={deleteTx}
                   onEdit={(tx) => setEditingTx(tx)}
-                  onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+                  onAdd={() => openAddModal("manual")}
                   onOpenProfile={() => setShowProfile(true)}
                 />
               )}
@@ -696,9 +706,9 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                   stats={stats}
                   pieData={pieData}
                   overBudgetCats={overBudgetCats}
-                  onAdd={() => { setInitialAddTab("manual"); setShowAdd(true); }}
-                  onOpenVoice={() => { setInitialAddTab("voice"); setShowAdd(true); }}
-                  onOpenImage={() => { setInitialAddTab("image"); setShowAdd(true); }}
+                  onAdd={() => openAddModal("manual")}
+                  onOpenVoice={() => openAddModal("voice")}
+                  onOpenImage={() => openAddModal("image")}
                   transactions={transactions}
                   safeToSpend={safeToSpend}
                   onOpenSettings={() => setShowSettings(true)}
@@ -779,7 +789,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
             <button
               className="fab-btn"
-              onClick={() => { setInitialAddTab("manual"); setShowAdd(true); }}
+              onClick={() => openAddModal("manual")}
               title="Thêm giao dịch"
               style={{
                 width: 46, height: 46, borderRadius: "50%",
@@ -821,7 +831,10 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
           <AddTxModal
             form={form}
             setForm={setForm}
-            onClose={() => setShowAdd(false)}
+            onClose={() => {
+              setShowAdd(false);
+              setForm({ type: "expense", cat: "", nature: "need", amount: "", note: "", date: todayStr() });
+            }}
             onSubmit={addTransaction}
             token={token}
             onSaveMultiple={addMultipleTransactions}
@@ -3087,6 +3100,7 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
 function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, safeToSpend, initialTab = "manual" }) {
   const [inputTab, setInputTab] = useState(initialTab); // "manual" | "text" | "voice" | "image"
   const [showCatList, setShowCatList] = useState(false);
+  const [catError, setCatError] = useState(false);
   const [nlText, setNlText] = useState(""); // natural language input
   const [isListening, setIsListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
@@ -3107,7 +3121,15 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
 
   function handleManualSubmit() {
     const amt = parseThousands(form.amount);
-    if (!amt || amt <= 0) return;
+    if (!amt || amt <= 0) {
+      alert("Vui lòng nhập số tiền hợp lệ.");
+      return;
+    }
+    if (!form.cat) {
+      setCatError(true);
+      setShowCatList(true);
+      return;
+    }
     if (form.type === "expense" && safeToSpend && amt > safeToSpend.remainingToday) {
       const confirmSave = window.confirm(
         `Cảnh báo Safe-to-Spend: Khoản chi này (${fmtVND(amt)}) sẽ làm bạn vượt hạn mức cho phép hôm nay (còn lại: ${safeToSpend.remainingToday > 0 ? fmtVND(safeToSpend.remainingToday) : "0 đ"}). Bạn còn ${safeToSpend.daysRemaining} ngày nữa mới đến kỳ nhận tiền (${safeToSpend.nextPaydayStr}). Bạn có chắc chắn muốn ghi nhận không?`
@@ -3345,8 +3367,9 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                     key={t}
                     type="button"
                     onClick={() => {
-                      setForm((f) => ({ ...f, type: t, cat: t === "expense" ? "food" : "allowance" }));
+                      setForm((f) => ({ ...f, type: t, cat: "" }));
                       setShowCatList(false);
+                      setCatError(false);
                     }}
                     style={{
                       flex: 1, padding: "9px 0", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
@@ -3416,7 +3439,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                     width: "100%",
                     padding: "10px 12px",
                     borderRadius: 10,
-                    border: `1px solid ${showCatList ? T.teal : T.border}`,
+                    border: `1px solid ${catError ? T.brick : (showCatList ? T.teal : T.border)}`,
                     background: T.card,
                     display: "flex",
                     alignItems: "center",
@@ -3427,8 +3450,8 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                     {(() => {
-                      const selected = cats.find((c) => c.id === form.cat) || cats[0];
-                      if (!selected) return <span style={{ fontSize: 13, color: T.inkSoft }}>Chọn thuộc tính</span>;
+                      const selected = cats.find((c) => c.id === form.cat);
+                      if (!selected) return <span style={{ fontSize: 13, color: T.inkSoft }}>Chọn danh mục</span>;
                       const IconComp = selected.Icon;
                       return (
                         <>
@@ -3457,6 +3480,12 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                     {showCatList ? <ChevronUp size={18} color={T.inkSoft} /> : <ChevronDown size={18} color={T.inkSoft} />}
                   </div>
                 </div>
+
+                {catError && !form.cat && (
+                  <div style={{ fontSize: 11, color: T.brick, marginTop: 4, paddingLeft: 4 }}>
+                    Vui lòng chọn 1 danh mục
+                  </div>
+                )}
 
                 {/* List các thuộc tính hiển thị khi bấm vào */}
                 {showCatList && (
@@ -3489,6 +3518,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
                               nature: (c.id === "entertainment" || c.id === "shopping") ? "want" : (f.type === "expense" ? f.nature : "need"),
                             }));
                             setShowCatList(false);
+                            setCatError(false);
                           }}
                           style={{
                             display: "flex",
