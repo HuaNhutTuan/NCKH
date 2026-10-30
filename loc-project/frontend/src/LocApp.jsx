@@ -617,8 +617,8 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
           backgroundImage: `repeating-linear-gradient(to bottom, transparent, transparent 27px, rgba(218, 213, 196, 0.42) 28px)`,
         }}
       >
-        {/* Header — Ngày & Người dùng (ẩn khi ở tab sổ giao dịch) */}
-        {tab !== "transactions" && (
+        {/* Header — Ngày & Người dùng */}
+        {tab !== "chat" && (
           <div className="loc-shell-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: T.paper, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
             <div style={{ fontSize: 11, color: T.inkSoft, fontWeight: 500, letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Xin chào, {user?.name || "bạn"}</div>
@@ -672,20 +672,27 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
 
         {/* Body */}
         {tab !== "chat" ? (
-          tab === "transactions" ? (
-            <div
-              className="loc-scroll-ledger"
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                paddingBottom: 85,
-                background: "#FFFFFF",
-              }}
-            >
-              {dataLoading && (
-                <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
-              )}
-              {!dataLoading && (
+          <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
+            {dataLoading && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
+            )}
+            {!dataLoading && tab === "home" && (
+              <HomeTab
+                stats={stats}
+                pieData={pieData}
+                overBudgetCats={overBudgetCats}
+                onAdd={() => openAddModal("manual")}
+                onOpenVoice={() => openAddModal("voice")}
+                onOpenImage={() => openAddModal("image")}
+                transactions={transactions}
+                safeToSpend={safeToSpend}
+                onOpenSettings={() => setShowSettings(true)}
+                onEditTx={(tx) => setEditingTx(tx)}
+                onDeleteTx={deleteTx}
+              />
+            )}
+            {!dataLoading && tab === "transactions" && (
+              <div style={{ paddingBottom: 20 }}>
                 <TransactionsTab
                   transactions={transactions}
                   balance={stats.balance}
@@ -694,28 +701,8 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                   onAdd={() => openAddModal("manual")}
                   onOpenProfile={() => setShowProfile(true)}
                 />
-              )}
-            </div>
-          ) : (
-            <div className="loc-scroll" style={{ flex: 1, overflowY: "auto" }}>
-              {dataLoading && (
-                <div style={{ textAlign: "center", padding: "40px 0", color: T.inkSoft, fontSize: 13 }}>Đang tải dữ liệu của bạn...</div>
-              )}
-              {!dataLoading && tab === "home" && (
-                <HomeTab
-                  stats={stats}
-                  pieData={pieData}
-                  overBudgetCats={overBudgetCats}
-                  onAdd={() => openAddModal("manual")}
-                  onOpenVoice={() => openAddModal("voice")}
-                  onOpenImage={() => openAddModal("image")}
-                  transactions={transactions}
-                  safeToSpend={safeToSpend}
-                  onOpenSettings={() => setShowSettings(true)}
-                  onEditTx={(tx) => setEditingTx(tx)}
-                  onDeleteTx={deleteTx}
-                />
-              )}
+              </div>
+            )}
             {!dataLoading && tab === "budget" && (
               <div style={{ paddingBottom: 20 }}>
                 <BudgetTab
@@ -736,7 +723,6 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
               />
             )}
           </div>
-          )
         ) : (
           <div className="loc-chat-wrapper">
             {dataLoading ? (
@@ -1417,70 +1403,7 @@ function TxRow({ t, onDelete, onEdit }) {
   );
 }
 
-// ---------------- Money Lover Category Icon Atom ----------------
-function CategoryIconML({ meta }) {
-  const IconComp = meta?.Icon || MoreHorizontal;
-  const bg = meta?.bg || "#F3F4F6";
-  const iconColor = meta?.iconColor || meta?.color || "#111827";
-
-  return (
-    <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginRight: 14 }}>
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: "50%",
-          background: bg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: iconColor,
-        }}
-      >
-        <IconComp size={22} strokeWidth={2.2} />
-      </div>
-      {/* Mini wallet badge */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: -1,
-          right: -1,
-          width: 15,
-          height: 15,
-          borderRadius: 4,
-          background: "#D97706",
-          border: "1.5px solid #FFFFFF",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
-        }}
-      >
-        <Wallet size={8} color="#FFFFFF" strokeWidth={2.4} />
-      </div>
-    </div>
-  );
-}
-
-// ---------------- Helpers for Money Lover Journal ----------------
-function formatVNDAmount(amount) {
-  return Math.abs(Math.round(amount || 0)).toLocaleString("en-US");
-}
-
-function formatDayTotalVN(amount) {
-  const rounded = Math.round(amount || 0);
-  const formatted = Math.abs(rounded).toLocaleString("en-US");
-  if (rounded < 0) return `-${formatted}`;
-  if (rounded > 0) return `+${formatted}`;
-  return "0";
-}
-
-function formatBalanceVND(balance) {
-  const rounded = Math.round(balance || 0);
-  const formatted = Math.abs(rounded).toLocaleString("en-US");
-  return (rounded < 0 ? "-" : "") + formatted + " đ";
-}
-
+// ---------------- Helpers for Transactions Journal ----------------
 function parseTxDate(dateStr) {
   if (!dateStr) return { day: "", dayName: "", monthYear: "" };
   const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
@@ -1494,7 +1417,7 @@ function parseTxDate(dateStr) {
   return {
     day: String(d).padStart(2, "0"),
     dayName: isNaN(dt.getTime()) ? "" : dayNames[dt.getDay()],
-    monthYear: `tháng ${m} ${y}`,
+    monthYear: `Tháng ${m}/${y}`,
   };
 }
 
@@ -1521,9 +1444,6 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
 
   const [walletFilter, setWalletFilter] = useState("all"); // "all" | "expense" | "income" | "need" | "want"
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [showWalletMenu, setShowWalletMenu] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
   const currMonthLabel = `${String(refDate.getMonth() + 1).padStart(2, "0")}/${refDate.getFullYear()}`;
@@ -1531,6 +1451,11 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
   const prevMonthLabel = `${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}/${prevMonthDate.getFullYear()}`;
   const nextMonthDate = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 1);
   const nextMonthLabel = `${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}/${nextMonthDate.getFullYear()}`;
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const selectedMonthPrefix = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
+  const isCurrentMonth = selectedMonthPrefix === currentMonthKey;
 
   function handleMonthChange(delta) {
     setRefDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
@@ -1540,8 +1465,7 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
     setRefDate(new Date());
   }
 
-  const selectedMonthPrefix = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}`;
-
+  // Lọc giao dịch của tháng được chọn
   const monthTransactions = useMemo(() => {
     return transactions.filter((t) => {
       const d = (t.date || "").split("T")[0];
@@ -1549,6 +1473,18 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
     });
   }, [transactions, selectedMonthPrefix]);
 
+  // Thống kê tổng thu, tổng chi và ròng cho tháng được chọn
+  const monthStats = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    monthTransactions.forEach((t) => {
+      if (t.type === "income") income += t.amount;
+      else expense += t.amount;
+    });
+    return { income, expense, net: income - expense };
+  }, [monthTransactions]);
+
+  // Lọc theo bộ lọc danh mục và tìm kiếm
   const filteredTransactions = useMemo(() => {
     let list = [...monthTransactions];
     if (walletFilter === "expense") {
@@ -1577,6 +1513,7 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
     return list;
   }, [monthTransactions, walletFilter, searchQuery]);
 
+  // Gom nhóm theo ngày
   const groupedByDate = useMemo(() => {
     const map = {};
     filteredTransactions.forEach((t) => {
@@ -1597,447 +1534,419 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
     });
   }, [filteredTransactions]);
 
-  const walletName = useMemo(() => {
-    if (walletFilter === "expense") return "Khoản chi";
-    if (walletFilter === "income") return "Khoản thu";
-    if (walletFilter === "need") return "Thiết yếu";
-    if (walletFilter === "want") return "Mong muốn";
-    return "Tổng cộng";
-  }, [walletFilter]);
+  const filterTabs = [
+    { id: "all", label: "Tất cả" },
+    { id: "expense", label: "Chi tiêu" },
+    { id: "income", label: "Thu nhập" },
+    { id: "need", label: "Thiết yếu" },
+    { id: "want", label: "Mong muốn" },
+  ];
 
   return (
-    <div style={{ background: "#FFFFFF", minHeight: "100%", width: "100%" }}>
-      {/* ── Top Bar ── */}
+    <div>
+      {/* ── Thẻ chọn tháng & điều hướng ── */}
       <div
         style={{
+          background: T.card,
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: "8px 12px",
+          marginTop: 10,
+          marginBottom: 12,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px 8px",
-          background: "#FFFFFF",
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
         }}
       >
-        {/* Left: Help button */}
         <button
-          onClick={() => setShowHelp(true)}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", borderRadius: "50%" }}
-          title="Trợ giúp"
+          onClick={() => handleMonthChange(-1)}
+          className="btn-edit"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: T.inkSoft,
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "5px 8px",
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 3,
+          }}
         >
-          <HelpCircle size={22} color="#1F2937" strokeWidth={1.8} />
+          <ChevronLeft size={15} />
+          <span>Tháng {prevMonthLabel}</span>
         </button>
 
-        {/* Center: Dropdown badge */}
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => {
-              setShowWalletMenu(!showWalletMenu);
-              setShowMoreMenu(false);
-            }}
+        <div style={{ textAlign: "center" }}>
+          <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 14px",
-              background: "#F3F4F6",
-              border: "none",
-              borderRadius: 20,
-              cursor: "pointer",
-              color: "#1F2937",
-              fontSize: 14,
-              fontWeight: 600,
+              color: T.tealDark,
+              fontSize: 15,
+              fontWeight: 700,
+              fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            <Globe size={16} color="#0D9488" strokeWidth={2} />
-            <span>{walletName}</span>
-            <ChevronDown size={14} color="#6B7280" />
-          </button>
-
-          {/* Dropdown Menu */}
-          {showWalletMenu && (
-            <>
-              <div
-                style={{ position: "fixed", inset: 0, zIndex: 100 }}
-                onClick={() => setShowWalletMenu(false)}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 6px)",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: 220,
-                  background: "#FFFFFF",
-                  borderRadius: 12,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                  border: "1px solid #E5E7EB",
-                  zIndex: 101,
-                  overflow: "hidden",
-                  padding: "4px 0",
-                }}
-              >
-                {[
-                  { id: "all", label: "Tất cả ví (Tổng cộng)" },
-                  { id: "expense", label: "Chỉ khoản chi tiêu" },
-                  { id: "income", label: "Chỉ khoản thu nhập" },
-                  { id: "need", label: "🟢 Thiết yếu (Needs)" },
-                  { id: "want", label: "🟡 Mong muốn (Wants)" },
-                ].map((item) => {
-                  const isSelected = walletFilter === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setWalletFilter(item.id);
-                        setShowWalletMenu(false);
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "9px 14px",
-                        textAlign: "left",
-                        background: isSelected ? "#F3F4F6" : "transparent",
-                        border: "none",
-                        fontSize: 13,
-                        fontWeight: isSelected ? 600 : 400,
-                        color: isSelected ? "#0D9488" : "#374151",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span>{item.label}</span>
-                      {isSelected && <Check size={14} color="#0D9488" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+            Tháng {currMonthLabel}
+          </div>
+          <div
+            style={{
+              width: 26,
+              height: 3,
+              background: T.teal,
+              borderRadius: 2,
+              margin: "3px auto 0",
+            }}
+          />
         </div>
 
-        {/* Right: Search and More options */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
           <button
-            onClick={() => setShowSearch(!showSearch)}
+            onClick={() => handleMonthChange(1)}
+            className="btn-edit"
             style={{
-              background: showSearch ? "#F3F4F6" : "none",
+              background: "none",
               border: "none",
               cursor: "pointer",
-              padding: 6,
-              borderRadius: "50%",
+              color: T.inkSoft,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "5px 8px",
+              borderRadius: 8,
               display: "flex",
               alignItems: "center",
+              gap: 3,
             }}
-            title="Tìm kiếm"
           >
-            <Search size={22} color={showSearch ? "#0D9488" : "#1F2937"} strokeWidth={1.8} />
+            <span>Tháng {nextMonthLabel}</span>
+            <ChevronRight size={15} />
           </button>
 
-          <div style={{ position: "relative" }}>
+          {!isCurrentMonth && (
             <button
-              onClick={() => {
-                setShowMoreMenu(!showMoreMenu);
-                setShowWalletMenu(false);
+              onClick={handleJumpCurrent}
+              title="Về tháng hiện tại"
+              style={{
+                background: "rgba(31, 111, 99, 0.1)",
+                border: `1px solid rgba(31, 111, 99, 0.25)`,
+                borderRadius: 7,
+                padding: "3px 6px",
+                cursor: "pointer",
+                color: T.teal,
+                fontSize: 10.5,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                marginLeft: 2,
               }}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: "50%", display: "flex", alignItems: "center" }}
-              title="Tùy chọn khác"
             >
-              <MoreVertical size={22} color="#1F2937" strokeWidth={1.8} />
+              <ChevronsRight size={12} strokeWidth={2.4} />
+              <span>Hiện tại</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Thẻ tổng hợp Thu - Chi - Số dư tháng ── */}
+      <div
+        style={{
+          background: `linear-gradient(145deg, ${T.tealDark}, #174b43)`,
+          borderRadius: 18,
+          padding: "16px 18px 14px",
+          color: "#F1EEE3",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "0 6px 20px rgba(18, 63, 56, 0.22)",
+          marginBottom: 14,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11.5, opacity: 0.82, fontWeight: 500 }}>
+              Tổng số dư ví hiện có
+            </div>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: -0.3,
+                marginTop: 2,
+              }}
+            >
+              {fmtVND(balance)}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={() => setShowHelp(true)}
+              title="Hướng dẫn sử dụng sổ giao dịch"
+              style={{
+                background: "rgba(255,255,255,0.12)",
+                border: "none",
+                cursor: "pointer",
+                padding: 7,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#F1EEE3",
+                borderRadius: 8,
+                transition: "background 0.15s",
+              }}
+            >
+              <HelpCircle size={16} />
             </button>
 
-            {/* More Menu Dropdown */}
-            {showMoreMenu && (
-              <>
-                <div
-                  style={{ position: "fixed", inset: 0, zIndex: 100 }}
-                  onClick={() => setShowMoreMenu(false)}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 6px)",
-                    right: 0,
-                    width: 190,
-                    background: "#FFFFFF",
-                    borderRadius: 12,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                    border: "1px solid #E5E7EB",
-                    zIndex: 101,
-                    overflow: "hidden",
-                    padding: "4px 0",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      onAdd && onAdd();
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      textAlign: "left",
-                      background: "transparent",
-                      border: "none",
-                      fontSize: 13,
-                      color: "#374151",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Plus size={15} color="#0D9488" /> Thêm giao dịch mới
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      setShowSearch(true);
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      textAlign: "left",
-                      background: "transparent",
-                      border: "none",
-                      fontSize: 13,
-                      color: "#374151",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <Search size={15} color="#374151" /> Tìm kiếm giao dịch
-                  </button>
-                  {onOpenProfile && (
-                    <button
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        onOpenProfile();
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        textAlign: "left",
-                        background: "transparent",
-                        border: "none",
-                        fontSize: 13,
-                        color: "#374151",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <User size={15} color="#374151" /> Hồ sơ cá nhân
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      setWalletFilter("all");
-                      setSearchQuery("");
-                      setShowSearch(false);
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      textAlign: "left",
-                      background: "transparent",
-                      border: "none",
-                      borderTop: "1px solid #F3F4F6",
-                      fontSize: 13,
-                      color: "#6B7280",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <X size={15} color="#6B7280" /> Bỏ tất cả bộ lọc
-                  </button>
-                </div>
-              </>
-            )}
+            <button
+              onClick={onAdd}
+              className="btn-gold"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: T.gold,
+                color: "#1F2937",
+                border: "none",
+                borderRadius: 10,
+                padding: "7px 12px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(217, 164, 65, 0.38)",
+              }}
+            >
+              <Plus size={15} strokeWidth={2.4} />
+              <span>Ghi chép</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 3 Cột thống kê tháng: Thu, Chi, Chênh lệch */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr 1fr",
+            gap: 8,
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: "1px solid rgba(255,255,255,0.14)",
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 10.5, opacity: 0.75, display: "flex", alignItems: "center", gap: 3 }}>
+              <TrendingUp size={12} color="#34D399" />
+              <span>Tổng thu</span>
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#34D399",
+                fontFamily: "'Space Grotesk', sans-serif",
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              +{fmtVND(monthStats.income)}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10.5, opacity: 0.75, display: "flex", alignItems: "center", gap: 3 }}>
+              <TrendingDown size={12} color="#FCA5A5" />
+              <span>Tổng chi</span>
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#FCA5A5",
+                fontFamily: "'Space Grotesk', sans-serif",
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              -{fmtVND(monthStats.expense)}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 10.5, opacity: 0.75 }}>Chênh lệch</div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: monthStats.net >= 0 ? "#34D399" : "#FCA5A5",
+                fontFamily: "'Space Grotesk', sans-serif",
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {monthStats.net >= 0 ? "+" : ""}{fmtVND(monthStats.net)}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Search Bar ── */}
-      {showSearch && (
-        <div style={{ padding: "0 16px 12px", background: "#FFFFFF", borderBottom: "1px solid #F3F4F6" }}>
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <Search size={16} color="#9CA3AF" style={{ position: "absolute", left: 10, pointerEvents: "none" }} />
+      {/* ── Tìm kiếm & Bộ lọc ── */}
+      <div style={{ marginBottom: 12 }}>
+        {/* Hàng Search Input */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
+            <Search
+              size={15}
+              color={T.inkSoft}
+              style={{ position: "absolute", left: 11, pointerEvents: "none" }}
+            />
             <input
               type="text"
-              placeholder="Tìm theo ghi chú, số tiền, ngày..."
+              placeholder="Tìm theo ghi chú, danh mục, số tiền..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
               style={{
                 width: "100%",
                 padding: "8px 30px 8px 34px",
                 borderRadius: 10,
-                border: "1px solid #E5E7EB",
-                background: "#F9FAFB",
-                fontSize: 13,
+                border: `1.5px solid ${T.border}`,
+                background: T.card,
+                fontSize: 12.5,
                 outline: "none",
                 boxSizing: "border-box",
-                color: "#1F2937",
+                color: T.ink,
+                fontFamily: "inherit",
+                transition: "border-color 0.18s",
               }}
+              onFocus={(e) => (e.target.style.borderColor = T.teal)}
+              onBlur={(e) => (e.target.style.borderColor = T.border)}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                style={{ position: "absolute", right: 8, background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  color: T.inkSoft,
+                }}
               >
-                <X size={14} color="#9CA3AF" />
+                <X size={14} />
               </button>
             )}
           </div>
         </div>
-      )}
 
-      {/* ── Balance Section ── */}
-      <div style={{ textAlign: "center", padding: "10px 16px 12px", background: "#FFFFFF" }}>
-        <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 500, marginBottom: 4 }}>
-          Số dư
-        </div>
+        {/* Các chip phân loại (Tất cả, Chi tiêu, Thu nhập, Thiết yếu, Mong muốn) */}
         <div
           style={{
-            fontSize: 27,
-            fontWeight: 700,
-            color: "#111827",
-            fontFamily: "'Space Grotesk', -apple-system, sans-serif",
-            letterSpacing: -0.3,
-          }}
-        >
-          {formatBalanceVND(balance)}
-        </div>
-      </div>
-
-      {/* ── Month Navigation Carousel ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "2px 16px 10px",
-          background: "#FFFFFF",
-          borderBottom: "1px solid #ECEEF1",
-          position: "relative",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, gap: 20 }}>
-          {/* Previous Month */}
-          <button
-            onClick={() => handleMonthChange(-1)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#9CA3AF",
-              fontSize: 14,
-              fontWeight: 500,
-              padding: "4px 8px",
-            }}
-          >
-            {prevMonthLabel}
-          </button>
-
-          {/* Selected Month */}
-          <div style={{ textAlign: "center", position: "relative", padding: "4px 8px" }}>
-            <div style={{ color: "#111827", fontSize: 15, fontWeight: 700 }}>
-              {currMonthLabel}
-            </div>
-            <div
-              style={{
-                width: 36,
-                height: 3.5,
-                background: "#111827",
-                borderRadius: 2,
-                margin: "4px auto 0",
-              }}
-            />
-          </div>
-
-          {/* Next Month */}
-          <button
-            onClick={() => handleMonthChange(1)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#9CA3AF",
-              fontSize: 14,
-              fontWeight: 500,
-              padding: "4px 8px",
-            }}
-          >
-            {nextMonthLabel}
-          </button>
-        </div>
-
-        {/* Jump to current month button ⏭ */}
-        <button
-          onClick={handleJumpCurrent}
-          title="Về tháng hiện tại"
-          style={{
-            position: "absolute",
-            right: 16,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: "#FFFFFF",
-            border: "1px solid #E5E7EB",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#111827",
+            gap: 6,
+            overflowX: "auto",
+            paddingBottom: 4,
+            scrollbarWidth: "none",
           }}
         >
-          <ChevronsRight size={17} strokeWidth={2.4} />
-        </button>
+          {filterTabs.map((item) => {
+            const isSelected = walletFilter === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setWalletFilter(item.id)}
+                style={{
+                  padding: "5px 12px",
+                  fontSize: 12,
+                  fontWeight: isSelected ? 700 : 500,
+                  borderRadius: 16,
+                  border: isSelected ? `1.5px solid ${T.teal}` : `1px solid ${T.border}`,
+                  background: isSelected ? T.teal : T.card,
+                  color: isSelected ? "#FFFFFF" : T.inkSoft,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
+                  boxShadow: isSelected ? "0 2px 6px rgba(31,111,99,0.22)" : "none",
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── Transaction List grouped by Day ── */}
+      {/* ── Danh sách giao dịch theo từng ngày ── */}
       {groupedByDate.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 20px", color: "#6B7280" }}>
+        <div
+          style={{
+            background: T.card,
+            border: `1px solid ${T.border}`,
+            borderRadius: 16,
+            textAlign: "center",
+            padding: "36px 20px",
+            color: T.inkSoft,
+            marginTop: 6,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+          }}
+        >
           <div
             style={{
-              width: 60,
-              height: 60,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
-              background: "#F3F4F6",
+              background: "rgba(31, 111, 99, 0.08)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 16px",
-              color: "#9CA3AF",
+              margin: "0 auto 12px",
+              color: T.teal,
             }}
           >
-            <Receipt size={28} strokeWidth={1.8} />
+            <Receipt size={26} strokeWidth={2} />
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#1F2937", marginBottom: 6 }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: T.ink,
+              marginBottom: 4,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
             {searchQuery ? "Không tìm thấy giao dịch" : `Chưa có giao dịch trong tháng ${currMonthLabel}`}
           </div>
-          <div style={{ fontSize: 12.5, color: "#6B7280", maxWidth: 260, margin: "0 auto 18px", lineHeight: 1.4 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: T.inkSoft,
+              maxWidth: 260,
+              margin: "0 auto 16px",
+              lineHeight: 1.4,
+            }}
+          >
             {searchQuery
-              ? `Không có giao dịch nào khớp với "${searchQuery}". Hãy thử tìm kiếm từ khóa khác.`
-              : "Bạn chưa ghi chép khoản thu chi nào trong tháng này."}
+              ? `Không có giao dịch nào khớp với "${searchQuery}". Hãy thử từ khóa khác.`
+              : "Bạn chưa ghi chép khoản thu chi nào trong tháng này. Hãy thêm giao dịch để quản lý tài chính hiệu quả hơn!"}
           </div>
           {searchQuery ? (
             <button
               onClick={() => setSearchQuery("")}
+              className="btn-teal"
               style={{
-                background: "#0D9488",
+                background: T.teal,
                 color: "#FFFFFF",
                 border: "none",
                 borderRadius: 10,
@@ -2052,16 +1961,17 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
           ) : (
             <button
               onClick={onAdd}
+              className="btn-teal"
               style={{
-                background: "#0D9488",
+                background: T.teal,
                 color: "#FFFFFF",
                 border: "none",
                 borderRadius: 10,
                 padding: "9px 20px",
                 fontSize: 13,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(13,148,136,0.3)",
+                boxShadow: "0 2px 8px rgba(31,111,99,0.3)",
               }}
             >
               + Thêm giao dịch ngay
@@ -2069,41 +1979,50 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
           )}
         </div>
       ) : (
-        <div style={{ background: "#FFFFFF" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {groupedByDate.map((group) => (
-            <div key={group.dateKey} style={{ borderBottom: "1px solid #ECEEF1" }}>
+            <div
+              key={group.dateKey}
+              style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 16,
+                overflow: "hidden",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+              }}
+            >
               {/* Day Header Row */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "12px 16px 8px",
-                  background: "#FFFFFF",
-                  borderBottom: "1px solid #ECEEF1",
+                  padding: "10px 14px",
+                  background: "rgba(31, 111, 99, 0.04)",
+                  borderBottom: `1px solid ${T.paperLine}`,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center" }}>
                   {/* Large Day Number */}
-                  <div
+                  <span
                     style={{
-                      fontSize: 32,
+                      fontSize: 24,
                       fontWeight: 700,
-                      fontFamily: "'Space Grotesk', -apple-system, sans-serif",
-                      color: "#111827",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      color: T.tealDark,
                       lineHeight: 1,
-                      marginRight: 10,
-                      minWidth: 42,
+                      marginRight: 8,
+                      minWidth: 30,
                     }}
                   >
                     {group.parsed.day}
-                  </div>
+                  </span>
                   {/* Day of Week & Month/Year */}
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#1F2937", lineHeight: 1.2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.ink, lineHeight: 1.2 }}>
                       {group.parsed.dayName}
                     </span>
-                    <span style={{ fontSize: 11.5, color: "#6B7280", lineHeight: 1.2, marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: T.inkSoft, lineHeight: 1.2, marginTop: 1 }}>
                       {group.parsed.monthYear}
                     </span>
                   </div>
@@ -2112,13 +2031,13 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
                 {/* Day Total */}
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: 700,
-                    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
-                    color: group.dayTotal > 0 ? "#10B981" : "#111827",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    color: group.dayTotal > 0 ? T.teal : group.dayTotal < 0 ? T.brick : T.inkSoft,
                   }}
                 >
-                  {formatDayTotalVN(group.dayTotal)}
+                  {group.dayTotal > 0 ? `+${fmtVND(group.dayTotal)}` : group.dayTotal < 0 ? `-${fmtVND(Math.abs(group.dayTotal))}` : "0 đ"}
                 </div>
               </div>
 
@@ -2126,69 +2045,110 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
               <div>
                 {group.items.map((t, idx) => {
                   const meta = catMeta(t.cat);
+                  const isLast = idx === group.items.length - 1;
                   return (
                     <div
                       key={t.id || idx}
                       onClick={() => onEdit && onEdit(t)}
-                      className="money-lover-tx-row"
+                      className="ledger-row"
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        padding: "11px 16px",
-                        background: "#FFFFFF",
-                        borderBottom: "1px solid #F3F4F6",
+                        gap: 10,
+                        padding: "10px 14px",
+                        borderBottom: isLast ? "none" : `1px solid ${T.paperLine}`,
                         cursor: "pointer",
-                        transition: "background-color 0.12s ease",
+                        transition: "background 0.14s ease",
                       }}
                     >
-                      <CategoryIconML meta={meta} />
+                      <IconBadge Icon={meta.Icon} color={meta.color} size={34} />
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
-                            fontSize: 15,
+                            fontSize: 13,
                             fontWeight: 500,
-                            color: "#111827",
+                            color: T.ink,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {meta.label}
+                          {(t.note && t.note.trim()) ? t.note.trim() : meta.label}
                         </div>
-                        {t.note && t.note.trim() && t.note.trim() !== meta.label && (
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: "#6B7280",
-                              marginTop: 2,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {t.note}
-                          </div>
-                        )}
+                        <div
+                          style={{
+                            fontSize: 10.5,
+                            color: T.inkSoft,
+                            marginTop: 2,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                          }}
+                        >
+                          <span>{meta.label}</span>
+                          {t.type === "expense" && (
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 700,
+                                padding: "1px 5px",
+                                borderRadius: 4,
+                                background: t.nature === "want" ? "#FEF3C7" : "#D1FAE5",
+                                color: t.nature === "want" ? "#92400E" : "#065F46",
+                                border: `1px solid ${t.nature === "want" ? "#FDE68A" : "#A7F3D0"}`,
+                              }}
+                            >
+                              {t.nature === "want" ? "Mong muốn" : "Thiết yếu"}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div
                         style={{
-                          fontSize: 15,
-                          fontWeight: 600,
-                          fontFamily: "'Space Grotesk', -apple-system, sans-serif",
-                          color: t.type === "income" ? "#10B981" : "#EB5757",
+                          fontSize: 13.5,
+                          fontWeight: 700,
+                          fontFamily: "'Space Grotesk', sans-serif",
+                          color: t.type === "income" ? T.teal : T.brick,
                           flexShrink: 0,
-                          marginLeft: 10,
+                          marginLeft: 6,
                         }}
                       >
-                        {t.type === "income" ? `+${formatVNDAmount(t.amount)}` : formatVNDAmount(t.amount)}
+                        {t.type === "income" ? `+${fmtVND(t.amount)}` : `-${fmtVND(t.amount)}`}
                       </div>
 
+                      {/* Nút Sửa */}
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(t);
+                          }}
+                          title="Sửa giao dịch"
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: T.inkSoft,
+                            padding: 4,
+                            borderRadius: 6,
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+
+                      {/* Nút Xóa */}
                       {onDelete && (
                         <button
                           type="button"
                           title="Xóa giao dịch"
+                          className="btn-delete"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (window.confirm("Bạn có chắc muốn xóa giao dịch này?")) {
@@ -2199,17 +2159,15 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
                             background: "none",
                             border: "none",
                             cursor: "pointer",
-                            color: "#D1D5DB",
+                            color: T.inkSoft,
                             padding: 4,
-                            marginLeft: 6,
-                            borderRadius: 4,
+                            borderRadius: 6,
+                            flexShrink: 0,
                             display: "flex",
                             alignItems: "center",
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = "#EF4444")}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = "#D1D5DB")}
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       )}
                     </div>
@@ -2227,8 +2185,8 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(2px)",
+            backgroundColor: "rgba(32, 48, 44, 0.65)",
+            backdropFilter: "blur(4px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2239,56 +2197,72 @@ function TransactionsTab({ transactions = [], balance = 0, onDelete, onEdit, onA
         >
           <div
             style={{
-              background: "#FFFFFF",
-              borderRadius: 16,
-              padding: "20px 24px",
-              maxWidth: 360,
+              background: T.card,
+              border: `1px solid ${T.border}`,
+              borderRadius: 20,
+              padding: "22px 20px",
+              maxWidth: 380,
               width: "100%",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+              boxShadow: "0 16px 40px rgba(0,0,0,0.2)",
+              color: T.ink,
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "#CCFBF1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#0D9488",
-                }}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "rgba(31, 111, 99, 0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: T.teal,
+                  }}
+                >
+                  <Receipt size={20} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: T.tealDark }}>
+                  Sổ giao dịch (Nhật ký)
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHelp(false)}
+                className="btn-close"
+                style={{ background: "none", border: "none", color: T.inkSoft, cursor: "pointer", padding: 4 }}
               >
-                <HelpCircle size={20} />
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>
-                Sổ giao dịch (Nhật ký)
-              </div>
+                <X size={18} />
+              </button>
             </div>
-            <div style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5, marginBottom: 16 }}>
-              Đây là nơi ghi chép và tổng hợp chi tiết các giao dịch tài chính hàng ngày của bạn theo từng tháng.
+
+            <div style={{ fontSize: 12.5, color: T.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+              Đây là nơi ghi chép và tổng hợp chi tiết các giao dịch tài chính hàng ngày của bạn theo từng tháng sổ tay.
               <br /><br />
-              • <b>Số dư:</b> Tổng số dư ngân quỹ hiện có của bạn.<br />
-              • <b>Theo ngày:</b> Các khoản thu chi được gom nhóm theo từng ngày để bạn nắm rõ lịch sử tiêu dùng.<br />
-              • <b>Chỉnh sửa/Xóa:</b> Bấm vào bất kỳ dòng giao dịch nào để xem chi tiết hoặc chỉnh sửa.
+              • <b style={{ color: T.ink }}>Số dư ví & Thu chi:</b> Thẻ đầu trang hiển thị tổng số dư và cán cân thu chi tháng.<br />
+              • <b style={{ color: T.ink }}>Gom nhóm theo ngày:</b> Các khoản thu chi được nhóm rõ ràng theo từng ngày để bạn nắm chắc dòng tiền.<br />
+              • <b style={{ color: T.ink }}>Phân loại Nhu cầu & Mong muốn:</b> Nhận biết các khoản chi Thiết yếu vs Mong muốn để rèn luyện kỷ luật tài chính.<br />
+              • <b style={{ color: T.ink }}>Chỉnh sửa & Xóa:</b> Nhấp vào bất kỳ dòng nào để xem chi tiết hoặc chỉnh sửa.
             </div>
+
             <button
               onClick={() => setShowHelp(false)}
+              className="btn-teal"
               style={{
                 width: "100%",
                 padding: "10px 0",
-                borderRadius: 10,
-                background: "#0D9488",
+                borderRadius: 12,
+                background: T.teal,
                 color: "#FFFFFF",
                 border: "none",
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
               }}
             >
-              Đã hiểu
+              ĐÃ HIỂU
             </button>
           </div>
         </div>
