@@ -22,6 +22,7 @@ import EditTxModal from "./components/modals/EditTxModal";
 import ProfileModal from "./components/ui/ProfileModal";
 import LearnTab from "./components/learn/LearnTab";
 import { formatThousands, parseThousands, handleNumericChange } from "./utils/format";
+import tuanAvatar from "./assets/tuan_avatar.jpg";
 
 // ---------- Design tokens (ledger / student notebook theme) ----------
 const T = {
@@ -157,6 +158,15 @@ export default function LocApp() {
   const { token, user, logout, updateUser } = useAuth();
   const [tab, setTab] = useState("home");
   const [previousTab, setPreviousTab] = useState("home");
+  const [showTuấnPill, setShowTuấnPill] = useState(true);
+
+  // Hiển thị chữ "Trợ lý Tuấn" trong 3 giây đầu khi mở app rồi tự biến mất
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTuấnPill(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
   const [showProfile, setShowProfile] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [budgets, setBudgets] = useState({});
@@ -900,7 +910,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
         >
           {tab !== "chat" && (
             <div
-              className="chat-bubble-pill"
+              className={`chat-bubble-pill ${!showTuấnPill ? "pill-hidden" : ""}`}
               onClick={() => {
                 setPreviousTab(tab);
                 setTab("chat");
@@ -938,41 +948,54 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
             }}
             title={tab === "chat" ? "Đóng trợ lý Tuấn" : "Trò chuyện với Trợ lý Tuấn"}
             style={{
-              width: 50,
-              height: 50,
+              width: 52,
+              height: 52,
               borderRadius: "50%",
               background: tab === "chat"
                 ? `linear-gradient(135deg, #AE4C3B, #8B3527)`
-                : `linear-gradient(135deg, ${T.teal}, ${T.tealDark})`,
+                : "#FFFFFF",
               border: "2.5px solid #FFFFFF",
               boxShadow: tab === "chat"
                 ? "0 4px 16px rgba(174, 76, 59, 0.45)"
-                : "0 4px 16px rgba(31, 111, 99, 0.45)",
+                : "0 4px 16px rgba(31, 111, 99, 0.35)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               position: "relative",
               flexShrink: 0,
+              padding: 0,
             }}
           >
             {tab === "chat" ? (
-              <X size={22} color="#FFFFFF" strokeWidth={2.6} />
+              <X size={24} color="#FFFFFF" strokeWidth={2.6} />
             ) : (
               <>
-                <Sparkles size={22} color="#F1EEE3" strokeWidth={2.3} />
+                <img
+                  src={tuanAvatar}
+                  alt="Trợ lý Tuấn"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    objectPosition: "center 20%",
+                    display: "block",
+                  }}
+                />
                 {/* Chấm xanh online */}
                 <span
                   style={{
                     position: "absolute",
-                    bottom: 2,
-                    right: 2,
-                    width: 11,
-                    height: 11,
+                    bottom: 1,
+                    right: 1,
+                    width: 12,
+                    height: 12,
                     borderRadius: "50%",
                     background: "#22C55E",
                     border: "2px solid #FFFFFF",
-                    boxShadow: "0 0 4px rgba(34,197,94,0.6)",
+                    boxShadow: "0 0 5px rgba(34,197,94,0.7)",
+                    zIndex: 2,
                   }}
                 />
               </>
@@ -2838,8 +2861,15 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
               <span>Quay lại</span>
             </button>
           )}
-          <Target size={16} color={T.teal} style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: 12, color: T.inkSoft, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ position: "relative", width: 24, height: 24, flexShrink: 0 }}>
+            <img
+              src={tuanAvatar}
+              alt="Tuấn"
+              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", objectPosition: "center 20%", border: `1.5px solid ${T.teal}` }}
+            />
+            <span style={{ position: "absolute", bottom: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: "#22C55E", border: "1.5px solid #fff" }} />
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: T.tealDark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             Trợ lý Tuấn • Đồng hành chi tiêu
           </div>
         </div>
@@ -2958,9 +2988,25 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
 
         {/* Danh sách tin nhắn */}
         {messages.map((m, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", flexShrink: 0 }}>
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 7, flexShrink: 0 }}>
+            {m.role === "assistant" && (
+              <img
+                src={tuanAvatar}
+                alt="Tuấn"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  objectPosition: "center 20%",
+                  border: `1.5px solid ${T.teal}44`,
+                  flexShrink: 0,
+                  marginBottom: 2,
+                }}
+              />
+            )}
             <div style={{
-              maxWidth: "85%", padding: "9px 12px", borderRadius: 14,
+              maxWidth: "82%", padding: "9px 12px", borderRadius: 14,
               borderBottomRightRadius: m.role === "user" ? 3 : 14,
               borderBottomLeftRadius: m.role === "user" ? 14 : 3,
               background: m.role === "user" ? T.teal : T.card,
@@ -2974,7 +3020,21 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
           </div>
         ))}
         {chatLoading && (
-          <div style={{ display: "flex", justifyContent: "flex-start", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-end", gap: 7, flexShrink: 0 }}>
+            <img
+              src={tuanAvatar}
+              alt="Tuấn"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                objectFit: "cover",
+                objectPosition: "center 20%",
+                border: `1.5px solid ${T.teal}44`,
+                flexShrink: 0,
+                marginBottom: 2,
+              }}
+            />
             <div style={{ padding: "9px 12px", borderRadius: 14, background: T.card, border: `1px solid ${T.border}`, fontSize: 13, color: T.inkSoft }}>
               Tuấn đang soạn câu trả lời…
             </div>
