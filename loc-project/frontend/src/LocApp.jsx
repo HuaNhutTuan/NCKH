@@ -737,7 +737,7 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
                 chatEndRef={chatEndRef}
                 user={user}
                 token={token}
-                onClose={() => setTab(previousTab || "home")}
+                onClose={() => setTab(previousTab && previousTab !== "chat" ? previousTab : "home")}
               />
             )}
           </div>
@@ -894,20 +894,20 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
         {/* Toast notification với Undo */}
         <Toast toast={toast} onClose={() => setToast(null)} />
 
-        {/* ── Bong bóng chat Trợ lý Tuấn nổi ở góc dưới màn hình ── */}
-        <div
-          className="loc-floating-chat-container"
-          style={{
-            position: "absolute",
-            right: 16,
-            bottom: "calc(66px + env(safe-area-inset-bottom, 0px))",
-            zIndex: 35,
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-          }}
-        >
-          {tab !== "chat" && (
+        {/* ── Bong bóng chat Trợ lý Tuấn nổi ở góc dưới màn hình (ẩn khi đang ở tab Chat) ── */}
+        {tab !== "chat" && (
+          <div
+            className="loc-floating-chat-container"
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: "calc(66px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 35,
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+            }}
+          >
             <div
               className={`chat-bubble-pill ${!showTuấnPill ? "pill-hidden" : ""}`}
               onClick={() => {
@@ -934,73 +934,59 @@ Hãy dùng dữ liệu này để đưa ra câu hỏi gợi mở hoặc lời kh
               <Sparkles size={13} color={T.goldDark} />
               <span>Trợ lý Tuấn</span>
             </div>
-          )}
-          <button
-            className="loc-chat-bubble"
-            onClick={() => {
-              if (tab === "chat") {
-                setTab(previousTab || "home");
-              } else {
+            <button
+              className="loc-chat-bubble"
+              onClick={() => {
                 setPreviousTab(tab);
                 setTab("chat");
-              }
-            }}
-            title={tab === "chat" ? "Đóng trợ lý Tuấn" : "Trò chuyện với Trợ lý Tuấn"}
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              background: tab === "chat"
-                ? `linear-gradient(135deg, #AE4C3B, #8B3527)`
-                : "#FFFFFF",
-              border: "2.5px solid #FFFFFF",
-              boxShadow: tab === "chat"
-                ? "0 4px 16px rgba(174, 76, 59, 0.45)"
-                : "0 4px 16px rgba(31, 111, 99, 0.35)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-              flexShrink: 0,
-              padding: 0,
-            }}
-          >
-            {tab === "chat" ? (
-              <X size={24} color="#FFFFFF" strokeWidth={2.6} />
-            ) : (
-              <>
-                <img
-                  src={tuanAvatar}
-                  alt="Trợ lý Tuấn"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    objectPosition: "center 20%",
-                    display: "block",
-                  }}
-                />
-                {/* Chấm xanh online */}
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: 1,
-                    right: 1,
-                    width: 12,
-                    height: 12,
-                    borderRadius: "50%",
-                    background: "#22C55E",
-                    border: "2px solid #FFFFFF",
-                    boxShadow: "0 0 5px rgba(34,197,94,0.7)",
-                    zIndex: 2,
-                  }}
-                />
-              </>
-            )}
-          </button>
-        </div>
+              }}
+              title="Trò chuyện với Trợ lý Tuấn"
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "#FFFFFF",
+                border: "2.5px solid #FFFFFF",
+                boxShadow: "0 4px 16px rgba(31, 111, 99, 0.35)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                flexShrink: 0,
+                padding: 0,
+              }}
+            >
+              <img
+                src={tuanAvatar}
+                alt="Trợ lý Tuấn"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  objectPosition: "center 20%",
+                  display: "block",
+                }}
+              />
+              {/* Chấm xanh online */}
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 1,
+                  right: 1,
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#22C55E",
+                  border: "2px solid #FFFFFF",
+                  boxShadow: "0 0 5px rgba(34,197,94,0.7)",
+                  zIndex: 2,
+                }}
+              />
+            </button>
+          </div>
+        )}
 
       </div>
     </div>
@@ -2839,9 +2825,9 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
               onClick={onClose}
               title="Quay lại"
               style={{
-                background: "none", border: "none", cursor: "pointer",
-                color: T.teal, display: "flex", alignItems: "center", gap: 2,
-                fontSize: 12, fontWeight: 700, padding: "4px 4px 4px 0", flexShrink: 0,
+                background: "rgba(31,111,99,0.08)", border: `1px solid ${T.teal}33`, cursor: "pointer",
+                color: T.tealDark, display: "flex", alignItems: "center", gap: 3,
+                fontSize: 12, fontWeight: 700, padding: "5px 10px 5px 6px", borderRadius: 16, flexShrink: 0,
               }}
             >
               <ChevronLeft size={16} />
@@ -2861,19 +2847,43 @@ function ChatTab({ messages, chatInput, setChatInput, chatLoading, sendChat, cha
           </div>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={() => setShowKBModal(true)}
-            style={{
-              display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
-              borderRadius: 8, border: `1px solid ${T.teal}`, background: "rgba(31,111,99,0.08)",
-              color: T.teal, fontSize: 11.5, fontWeight: 600, cursor: "pointer", flexShrink: 0,
-            }}
-          >
-            <BookOpen size={13} />
-            <span>Tri thức AI ({kbCount})</span>
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {isAdmin && (
+            <button
+              onClick={() => setShowKBModal(true)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, padding: "5px 10px",
+                borderRadius: 8, border: `1px solid ${T.teal}`, background: "rgba(31,111,99,0.08)",
+                color: T.teal, fontSize: 11.5, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+              }}
+            >
+              <BookOpen size={13} />
+              <span>Tri thức AI ({kbCount})</span>
+            </button>
+          )}
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Đóng chat, quay về trang chủ"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                border: `1px solid ${T.border}`,
+                background: T.card,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: T.inkSoft,
+                flexShrink: 0,
+              }}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {showKBModal && (
