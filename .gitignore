@@ -1,16 +1,26 @@
-﻿# Environment variables
+# Environment variables
 **/.env
 **/.env.*
 !**/.env.example
 
 # Node dependencies
+node_modules/
 **/node_modules/
+*/node_modules/
 
 # Build directories
 **/dist/
 **/build/
 
-# Logs & temp
+# Python scripts & temp previews
+*_preview.html
+create_*.py
+generate_*.py
+*.py[cod]
+__pycache__/
+*$py.class
+
+# Logs & OS temp
 *.log
 npm-debug.log*
 yarn-debug.log*
