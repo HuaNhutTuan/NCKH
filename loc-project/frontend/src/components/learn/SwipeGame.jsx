@@ -564,50 +564,29 @@ export default function SwipeGame({ onAsk, T }) {
               {currentCard.title}
             </h3>
 
-            <p style={{ fontSize: 13, color: T.ink, lineHeight: 1.55, margin: "0 0 18px", minHeight: 64 }}>
+            <p style={{ fontSize: 13, color: T.ink, lineHeight: 1.55, margin: "0 0 14px", minHeight: 64 }}>
               {currentCard.situation}
             </p>
 
-            {/* Xem trước 2 lựa chọn */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 6 }}>
-              <div
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  background: "#FEF2F2",
-                  border: "1px dashed #FCA5A5",
-                  fontSize: 11.5,
-                  color: "#991B1B",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <ArrowLeft size={14} />
-                <span>{currentCard.left.action}</span>
-              </div>
-              <div
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  background: "#ECFDF5",
-                  border: "1px dashed #6EE7B7",
-                  fontSize: 11.5,
-                  color: "#065F46",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  gap: 6,
-                  textAlign: "right",
-                }}
-              >
-                <span>{currentCard.right.action}</span>
-                <ArrowRight size={14} />
-              </div>
+            {/* Hướng dẫn thao tác vuốt tinh gọn trong thẻ */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingTop: 10,
+                borderTop: `1px dashed ${T.border}`,
+                fontSize: 11,
+                color: T.inkSoft,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#DC2626", fontWeight: 600 }}>
+                <ArrowLeft size={13} /> Vuốt Trái
+              </span>
+              <span style={{ opacity: 0.65, fontSize: 10.5 }}>kéo thẻ hoặc bấm bên dưới</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#059669", fontWeight: 600 }}>
+                Vuốt Phải <ArrowRight size={13} />
+              </span>
             </div>
 
             {/* Modal/Overlay giải thích sau khi gạt */}
@@ -710,8 +689,8 @@ export default function SwipeGame({ onAsk, T }) {
             )}
           </div>
 
-          {/* 2 Nút Bấm Điều Hướng Vuốt (Trợ Năng) */}
-          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+          {/* 2 Nút Bấm Lựa Chọn Hành Động */}
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <button
               onClick={() => handleSwipe("left")}
               disabled={!!lastFeedback}
@@ -723,17 +702,19 @@ export default function SwipeGame({ onAsk, T }) {
                 background: "#FEF2F2",
                 color: "#DC2626",
                 fontWeight: 700,
-                fontSize: 12.5,
+                fontSize: 12,
                 cursor: lastFeedback ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
                 transition: "all 0.15s ease",
+                textAlign: "center",
+                lineHeight: 1.35,
               }}
             >
-              <XCircle size={18} />
-              <span>👈 {currentCard.left.action}</span>
+              <XCircle size={18} style={{ flexShrink: 0 }} />
+              <span>{currentCard.left.action}</span>
             </button>
 
             <button
@@ -747,17 +728,19 @@ export default function SwipeGame({ onAsk, T }) {
                 background: "#ECFDF5",
                 color: "#059669",
                 fontWeight: 700,
-                fontSize: 12.5,
+                fontSize: 12,
                 cursor: lastFeedback ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
                 transition: "all 0.15s ease",
+                textAlign: "center",
+                lineHeight: 1.35,
               }}
             >
-              <span>👉 {currentCard.right.action}</span>
-              <CheckCircle2 size={18} />
+              <span>{currentCard.right.action}</span>
+              <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
             </button>
           </div>
         </div>
