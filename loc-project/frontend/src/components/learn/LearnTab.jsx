@@ -3,9 +3,11 @@ import {
   GraduationCap, Sparkles, HelpCircle, CheckCircle2, XCircle,
   Lightbulb, Calculator, Target, Trophy, BookOpen, AlertTriangle,
   ChevronRight, RefreshCw, ArrowRight, ShieldCheck, ArrowUpRight,
-  Clock, Rocket, MessageCircle, ChevronDown, ChevronUp
+  Clock, Rocket, MessageCircle, ChevronDown, ChevronUp, Search, Zap
 } from "lucide-react";
 import { formatThousands, parseThousands } from "../../utils/format";
+import SwipeGame from "./SwipeGame";
+import DetectiveGame from "./DetectiveGame";
 
 const fmtVND = (n) => Math.round(n).toLocaleString("vi-VN") + " đ";
 
@@ -143,10 +145,26 @@ const LESSON_ARTICLES = [
     content: "Thẻ tín dụng là tiền bạn đi vay trước của ngân hàng, không phải tiền của bạn. Nếu chỉ trả 'Số tiền thanh toán tối thiểu' (thường 5%), ngân hàng sẽ tính lãi suất cao (25-35%/năm) trên TOÀN BỘ dư nợ ban đầu tính từ ngày quẹt thẻ. Nguyên tắc vàng: Luôn thanh toán 100% dư nợ đúng hạn trước ngày đến hạn thanh toán.",
     prompt: "Tuấn giải thích giúp mình cơ chế tính lãi của thẻ tín dụng sinh viên và bẫy 'thanh toán tối thiểu' với?"
   },
+  {
+    id: "credit_sgk10_forms",
+    tag: "SGK KT&PL 10",
+    title: "Phân Biệt 4 Hình Thức Tín Dụng (Bài 9 SGK)",
+    summary: "Tín dụng ngân hàng, thương mại, tiêu dùng và tín dụng nhà nước.",
+    content: "1. Tín dụng ngân hàng: Vay tiền vốn trên cơ sở lòng tin và hoàn trả gốc + lãi khi đến hạn (tín chấp, thế chấp, trả góp). 2. Tín dụng thương mại: Doanh nghiệp mua bán chịu hàng hóa cho nhau, trả nợ bằng tiền tệ. 3. Tín dụng tiêu dùng: Cho cá nhân vay mua sắm sinh hoạt (công ty tài chính, thẻ tín dụng). 4. Tín dụng nhà nước: Phát hành trái phiếu chính phủ hoặc cho vay ưu đãi phi lợi nhuận qua Ngân hàng Chính sách xã hội cho sinh viên khó khăn.",
+    prompt: "Tuấn giúp mình phân biệt rõ ràng 4 hình thức tín dụng theo SGK Giáo dục Kinh tế và Pháp luật 10 (Bài 9) kèm ví dụ nhé?"
+  },
+  {
+    id: "installment_calc_methods",
+    tag: "Toán tài chính",
+    title: "Cách Tính Trả Góp: Dư Nợ Gốc vs Dư Nợ Giảm Dần",
+    summary: "Công thức tính tiền gốc, lãi suất tháng và so sánh số tiền phải trả.",
+    content: "1. Dư nợ gốc ban đầu: Tiền lãi cố định = Gốc vay x Lãi suất tháng; Tiền trả hằng tháng = Gốc chia đều + Tiền lãi. 2. Dư nợ giảm dần: Tiền lãi tháng thứ k = Dư nợ còn lại x Lãi suất tháng. Dư nợ giảm dần giúp tổng tiền lãi thực tế thấp hơn và tiền phải trả nhẹ dần theo các tháng.",
+    prompt: "Tuấn hướng dẫn mình cách tính tiền trả góp theo dư nợ gốc ban đầu và dư nợ giảm dần với ví dụ số tròn dễ nhẩm nhé?"
+  },
 ];
 
 export default function LearnTab({ onAsk, stats, transactions }) {
-  const [subTab, setSubTab] = useState("quiz"); // "quiz" | "simulator" | "quests" | "lessons"
+  const [subTab, setSubTab] = useState("swipe"); // "swipe" | "detective" | "simulator" | "quiz" | "lessons" | "quests"
 
   // ---------- Trắc nghiệm State ----------
   const [quizAnswers, setQuizAnswers] = useState({});
@@ -252,7 +270,7 @@ export default function LearnTab({ onAsk, stats, transactions }) {
 
   // ---------- Sổ tay bài học State ----------
   const [activeLesson, setActiveLesson] = useState(null);
-  const [showDemo, setShowDemo] = useState(false);
+  const [showDemo, setShowDemo] = useState(true);
 
   const T = {
     teal: "#1F6F63",
@@ -552,23 +570,26 @@ export default function LearnTab({ onAsk, stats, transactions }) {
         </div>
 
         {/* Nút mở bản thử nghiệm (Developer / Testing Demo) */}
-        <div style={{ textAlign: "center", marginTop: 8 }}>
+        <div style={{ textAlign: "center", marginTop: 12 }}>
           <button
             onClick={() => setShowDemo(true)}
             style={{
-              background: "transparent",
-              border: `1px dashed ${T.border}`,
-              borderRadius: 8,
-              padding: "6px 12px",
-              color: T.inkSoft,
-              fontSize: 11,
+              background: `linear-gradient(135deg, ${T.tealDark}, ${T.teal})`,
+              color: "#FFFFFF",
+              border: "none",
+              borderRadius: 12,
+              padding: "11px 20px",
+              fontSize: 12.5,
+              fontWeight: 700,
               cursor: "pointer",
-              transition: "all 0.15s ease",
+              boxShadow: "0 4px 14px rgba(31, 111, 99, 0.25)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = T.teal)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = T.inkSoft)}
           >
-            ⚙️ Xem trước bản thử nghiệm tính năng (Developer Demo)
+            <Sparkles size={16} />
+            <span>Trải Nghiệm Bản Demo: Gạt Thẻ 60s & Soi Bẫy Hợp Đồng</span>
           </button>
         </div>
       </div>
@@ -593,7 +614,7 @@ export default function LearnTab({ onAsk, stats, transactions }) {
           color: "#92400E",
         }}
       >
-        <span>⚠️ Bạn đang ở chế độ xem trước bản thử nghiệm (Demo)</span>
+        <span>⚡ Bản Demo NCKH: Mini-Game Gạt Thẻ 60s & Thám Tử Soi Bẫy Tài Chính</span>
         <button
           onClick={() => setShowDemo(false)}
           style={{
@@ -607,7 +628,7 @@ export default function LearnTab({ onAsk, stats, transactions }) {
             cursor: "pointer",
           }}
         >
-          Quay lại
+          Xem tổng quan
         </button>
       </div>
 
@@ -625,26 +646,28 @@ export default function LearnTab({ onAsk, stats, transactions }) {
           }}>
             Học phần Nghiên cứu Khoa học
           </span>
-          <span style={{ fontSize: 11, opacity: 0.85 }}>EduFin Lab</span>
+          <span style={{ fontSize: 11, opacity: 0.85 }}>EduFin Lab • Trò Chơi Giáo Dục</span>
         </div>
         <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif", margin: "2px 0 6px" }}>
           Góc Học Tập & Rèn Luyện Tài Chính
         </div>
         <p style={{ margin: 0, fontSize: 11.5, opacity: 0.9, lineHeight: 1.45 }}>
-          Đo lường năng lực tài chính (FLS), trải nghiệm mô phỏng các cạm bẫy thực tế và rèn luyện thói quen kỷ luật.
+          Trải nghiệm mini-game phản xạ chi tiêu, thám tử soi bẫy hợp đồng tín dụng và nâng cao chỉ số FLS.
         </p>
       </div>
 
-      {/* Sub-tab Navigation (4 Trụ Cột Sư Phạm) */}
+      {/* Sub-tab Navigation */}
       <div style={{
         display: "flex", gap: 4, background: T.border, borderRadius: 12,
         padding: 3, marginBottom: 14, overflowX: "auto"
       }}>
         {[
-          { id: "quiz", label: "Đánh giá Năng lực", Icon: HelpCircle },
+          { id: "swipe", label: "🎮 Gạt Thẻ 60s", Icon: Zap },
+          { id: "detective", label: "🔍 Soi Bẫy Hợp Đồng", Icon: Search },
           { id: "simulator", label: "Mô phỏng Trả góp", Icon: Calculator },
-          { id: "quests", label: "Thử thách Hành vi", Icon: Target },
+          { id: "quiz", label: "Trắc nghiệm FLS", Icon: HelpCircle },
           { id: "lessons", label: "Sổ tay Vi mô", Icon: BookOpen },
+          { id: "quests", label: "Thử thách", Icon: Target },
         ].map(({ id, label, Icon }) => {
           const active = subTab === id;
           return (
@@ -667,6 +690,16 @@ export default function LearnTab({ onAsk, stats, transactions }) {
           );
         })}
       </div>
+
+      {/* ── TAB MỚI 1: GẠT THẺ TRÁI/PHẢI 60S (SWIPE CARDS) ── */}
+      {subTab === "swipe" && (
+        <SwipeGame onAsk={onAsk} T={T} />
+      )}
+
+      {/* ── TAB MỚI 2: THÁM TỬ TÀI CHÍNH - SOI BẪY HỢP ĐỒNG & SAO KÊ ── */}
+      {subTab === "detective" && (
+        <DetectiveGame onAsk={onAsk} T={T} />
+      )}
 
       {/* ── TAB 1: BÀI TRẮC NGHIỆM ĐÁNH GIÁ NĂNG LỰC (QUIZ PRE/POST TEST) ── */}
       {subTab === "quiz" && (

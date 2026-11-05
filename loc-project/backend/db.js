@@ -198,6 +198,26 @@ async function initDB() {
           title: "Sổ tay tài chính thông minh cho tân sinh viên",
           content: "CẨM NANG TÀI CHÍNH DÀNH CHO SINH VIÊN VIỆT NAM\n\n1. LẬP KẾ HOẠCH ĐẦU THÁNG:\n- Ngay khi nhận tiền từ gia đình hoặc lương làm thêm, hãy trích ngay 10-20% vào quỹ tiết kiệm trước, số còn lại chia đều cho 30 ngày.\n- Dùng tính năng Hạn mức chi tiêu mỗi ngày (Safe-to-Spend) của Tuấn để không bao giờ bị 'cháy túi' vào cuối tháng.\n\n2. CẢNH BÁO BẪY TÀI CHÍNH:\n- Tuyệt đối tránh xa các ứng dụng vay tiền online 'nhanh gọn', 'chỉ cần CCCD' vì lãi suất thực tế có thể lên đến 300-500%/năm.\n- Cảnh giác với các mô hình đầu tư sinh lời cam kết 20-30%/tháng, đa cấp biến tướng hoặc việc làm 'gõ văn bản/like video chuyển tiền'.\n- Nếu dùng thẻ tín dụng sinh viên, hãy luôn thanh toán 100% dư nợ đúng hạn để xây dựng điểm tín dụng tốt.",
         },
+        {
+          type: "document",
+          title: "Chuyên đề Tín dụng & Phương pháp tính toán lãi suất (SGK KT&PL 10)",
+          content: "CHUYÊN ĐỀ TÍN DỤNG VÀ CÁC DỊCH VỤ TÍN DỤNG (SGK GD KT&PL 10 - BÀI 9)\n\n1. 4 HÌNH THỨC TÍN DỤNG CHÍNH:\n- Tín dụng ngân hàng: Cho vay tín chấp, thế chấp, trả góp trên cơ sở lòng tin và hoàn trả gốc + lãi khi đến hạn.\n- Tín dụng thương mại: Doanh nghiệp mua bán chịu, trả chậm hàng hóa với nhau; hoàn trả gốc và lãi bằng tiền tệ.\n- Tín dụng tiêu dùng: Cho cá nhân/hộ gia đình vay mua sắm thiết bị, sinh hoạt (trả góp công ty tài chính, thẻ tín dụng). Lãi suất thường cao.\n- Tín dụng nhà nước: Nhà nước đi vay qua trái phiếu chính phủ (Bộ Tài chính) hoặc cho vay ưu đãi phi lợi nhuận qua Ngân hàng Chính sách xã hội.\n\n2. CÔNG THỨC CHO VAY TRẢ GÓP:\na) Dư nợ gốc ban đầu: Gốc hằng tháng = Tiền vay / Số tháng; Lãi hằng tháng = Tiền vay * Lãi suất tháng; Tiền trả hằng tháng = Gốc + Lãi (cố định).\nb) Dư nợ giảm dần: Gốc hằng tháng = Tiền vay / Số tháng; Lãi tháng k = Dư nợ còn lại * Lãi suất tháng (tiền lãi và tổng tiền giảm dần theo thời gian).\n\n3. THẺ TÍN DỤNG:\nChi tiêu trước, trả tiền sau; miễn lãi 40-45 ngày nếu trả đủ 100%. Nếu chậm trả sẽ bị phạt phí và chịu lãi suất rất cao (20-35%/năm).",
+        },
+        {
+          type: "faq",
+          title: "Phân biệt 4 hình thức tín dụng: Ngân hàng, Thương mại, Tiêu dùng và Nhà nước",
+          content: "Câu hỏi: Có những hình thức tín dụng phổ biến nào theo SGK Giáo dục Kinh tế và Pháp luật 10 và cách phân biệt?\nTrả lời: Có 4 hình thức chính: Tín dụng ngân hàng (quan hệ vay tiền ngân hàng - khách hàng); Tín dụng thương mại (quan hệ giữa các doanh nghiệp mua bán chịu hàng hóa); Tín dụng tiêu dùng (vay mua sắm sinh hoạt cá nhân qua công ty tài chính hoặc thẻ tín dụng); Tín dụng nhà nước (Nhà nước đi vay qua trái phiếu chính phủ hoặc cho vay ưu đãi qua Ngân hàng Chính sách xã hội).",
+        },
+        {
+          type: "faq",
+          title: "Công thức tính cho vay trả góp theo dư nợ gốc ban đầu và dư nợ giảm dần",
+          content: "Câu hỏi: Làm thế nào để tính tiền gốc và lãi khi vay mua trả góp (theo dư nợ gốc ban đầu vs dư nợ giảm dần)?\nTrả lời:\n1. Phương pháp Dư nợ gốc ban đầu (Gốc chia đều, lãi cố định): Gốc hằng tháng = Tiền vay gốc / Số tháng vay; Lãi hằng tháng = Tiền vay gốc × Lãi suất tháng; Tiền trả hằng tháng = Gốc + Lãi (cố định).\n2. Phương pháp Dư nợ giảm dần: Gốc hằng tháng = Tiền vay gốc / Số tháng vay; Lãi tháng k = Dư nợ còn lại × Lãi suất tháng; Tiền trả tháng k = Gốc hằng tháng + Lãi tháng k (giảm dần qua các tháng).",
+        },
+        {
+          type: "faq",
+          title: "Thẻ tín dụng (Credit Card) và bẫy lãi suất cần lưu ý cho sinh viên",
+          content: "Câu hỏi: Thẻ tín dụng hoạt động như thế nào và sinh viên cần lưu ý gì để không bị tính lãi?\nTrả lời:\n- Bản chất: Chi tiêu trước, trả tiền sau trong hạn mức được cấp.\n- Miễn lãi: Thường từ 40-45 ngày.\n- Quy tắc: Trả đủ 100% đúng hạn sẽ không mất lãi (lãi suất 0%). Nếu chậm trả hoặc chỉ trả mức tối thiểu, bạn bị phạt và chịu lãi suất rất cao (20% - 35%/năm) tính dồn từ ngày chi tiêu.",
+        },
       ];
 
       for (const item of sampleKB) {
