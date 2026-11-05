@@ -20,6 +20,12 @@ generate_*.py
 __pycache__/
 *$py.class
 
+# Documents & Presentations (Local only)
+*.pdf
+*.docx
+*.pptx
+qrcode_*.png
+
 # Logs & OS temp
 *.log
 npm-debug.log*
