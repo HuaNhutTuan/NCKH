@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import {
   ArrowLeft, ArrowRight, Sparkles, RefreshCw, Trophy,
   AlertTriangle, CheckCircle2, XCircle, ShieldCheck, Zap,
-  MessageCircle, Flame, Heart
+  MessageCircle, Flame, Heart, Wallet
 } from "lucide-react";
 
 // Danh sách các tình huống thẻ bài kết hợp SGK KT&PL 10 và thực tế đời sống sinh viên
@@ -280,79 +280,155 @@ export default function SwipeGame({ onAsk, T }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Thanh Chỉ Số Real-time: Ví tiền & Điểm thông thái */}
+      {/* Thanh Chỉ Số HUD Gamified: Cân đối, hiện đại và thân thiện */}
       <div
         style={{
-          background: T.card,
-          border: `1px solid ${T.border}`,
-          borderRadius: 16,
-          padding: "12px 16px",
+          background: "#FFFFFF",
+          border: "1px solid #E2E8F0",
+          borderRadius: 20,
+          padding: "14px 16px",
+          boxShadow: "0 4px 16px -2px rgba(0, 0, 0, 0.04)",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          flexDirection: "column",
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Hàng 1: Tiến độ vòng chơi mượt mà */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: T.tealDark,
+                background: T.teal + "14",
+                padding: "3px 9px",
+                borderRadius: 8,
+                letterSpacing: 0.3,
+              }}
+            >
+              THẺ {Math.min(currentIndex + 1, CARDS_DATA.length)} / {CARDS_DATA.length}
+            </span>
+            <span style={{ fontSize: 11.5, color: T.inkSoft, fontWeight: 500 }}>
+              Phản xạ tài chính 60s
+            </span>
+          </div>
+
+          {/* Thanh mini progress bar */}
           <div
             style={{
-              width: 38,
-              height: 38,
+              flex: 1,
+              maxWidth: 130,
+              height: 6,
+              background: "#F1F5F9",
               borderRadius: 10,
-              background: "#ECFDF5",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#059669",
+              overflow: "hidden",
             }}
           >
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: "uppercase" }}>
-              Ví tiền sinh viên
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: wallet < 500000 ? "#DC2626" : T.tealDark }}>
-              {wallet.toLocaleString("vi-VN")} đ
-            </div>
+            <div
+              style={{
+                width: `${((currentIndex + 1) / CARDS_DATA.length) * 100}%`,
+                height: "100%",
+                background: `linear-gradient(90deg, ${T.teal}, #10B981)`,
+                borderRadius: 10,
+                transition: "width 0.3s ease",
+              }}
+            />
           </div>
         </div>
 
-        <div style={{ height: 30, width: 1, background: T.border }} />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Hàng 2: Hai Mini-Card Chỉ Số Cân Đối (Không vạch chia thô) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {/* Card Ví tiền */}
           <div
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              background: "#EFF6FF",
+              background: wallet < 500000 ? "#FEF2F2" : "#F0FDF4",
+              border: `1px solid ${wallet < 500000 ? "#FECACA" : "#DCFCE7"}`,
+              borderRadius: 14,
+              padding: "10px 12px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              color: "#2563EB",
+              gap: 10,
+              transition: "all 0.2s ease",
             }}
           >
-            <Zap size={20} />
-          </div>
-          <div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: "uppercase" }}>
-              Điểm Thông Thái
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: wallet < 500000 ? "#FEE2E2" : "#DCFCE7",
+                color: wallet < 500000 ? "#DC2626" : "#059669",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Wallet size={18} />
             </div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: wisdom < 40 ? "#DC2626" : "#2563EB" }}>
-              {wisdom} / 100
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: wallet < 500000 ? "#991B1B" : "#166534" }}>
+                Ví Sinh Viên
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  color: wallet < 500000 ? "#DC2626" : "#047857",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {wallet.toLocaleString("vi-VN")} đ
+              </div>
             </div>
           </div>
-        </div>
 
-        <div style={{ height: 30, width: 1, background: T.border }} />
-
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: "uppercase" }}>
-            Tiến độ
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: T.ink }}>
-            {Math.min(currentIndex + 1, CARDS_DATA.length)} / {CARDS_DATA.length}
+          {/* Card Điểm thông thái */}
+          <div
+            style={{
+              background: wisdom < 40 ? "#FEF2F2" : "#EFF6FF",
+              border: `1px solid ${wisdom < 40 ? "#FECACA" : "#DBEAFE"}`,
+              borderRadius: 14,
+              padding: "10px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              transition: "all 0.2s ease",
+            }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: wisdom < 40 ? "#FEE2E2" : "#DBEAFE",
+                color: wisdom < 40 ? "#DC2626" : "#2563EB",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Zap size={18} />
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 600, color: wisdom < 40 ? "#991B1B" : "#1E40AF" }}>
+                Điểm Thông Thái
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  color: wisdom < 40 ? "#DC2626" : "#1D4ED8",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {wisdom} / 100
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -487,13 +563,13 @@ export default function SwipeGame({ onAsk, T }) {
             onTouchMove={handlePointerMove}
             onTouchEnd={handlePointerUp}
             style={{
-              background: T.card,
+              background: "#FFFFFF",
               border: `2px solid ${
-                dragOffset > 30 ? "#059669" : dragOffset < -30 ? "#DC2626" : T.border
+                dragOffset > 30 ? "#10B981" : dragOffset < -30 ? "#EF4444" : "#E2E8F0"
               }`,
-              borderRadius: 20,
-              padding: "20px 18px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
+              borderRadius: 22,
+              padding: "20px 18px 16px",
+              boxShadow: "0 10px 25px -4px rgba(0, 0, 0, 0.05), 0 4px 10px -2px rgba(0, 0, 0, 0.02)",
               transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.05}deg)`,
               transition: isDragging.current ? "none" : "all 0.25s cubic-bezier(0.2, 0.9, 0.3, 1)",
               cursor: isDragging.current ? "grabbing" : "grab",
@@ -513,9 +589,9 @@ export default function SwipeGame({ onAsk, T }) {
                   color: "#fff",
                   fontSize: 11,
                   fontWeight: 800,
-                  padding: "4px 10px",
-                  borderRadius: 12,
-                  boxShadow: "0 2px 8px rgba(5, 150, 105, 0.3)",
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  boxShadow: "0 4px 12px rgba(5, 150, 105, 0.3)",
                 }}
               >
                 👉 {currentCard.right.action}
@@ -531,9 +607,9 @@ export default function SwipeGame({ onAsk, T }) {
                   color: "#fff",
                   fontSize: 11,
                   fontWeight: 800,
-                  padding: "4px 10px",
-                  borderRadius: 12,
-                  boxShadow: "0 2px 8px rgba(220, 38, 38, 0.3)",
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
                 }}
               >
                 👈 {currentCard.left.action}
@@ -541,32 +617,51 @@ export default function SwipeGame({ onAsk, T }) {
             )}
 
             {/* Tag & Chủ đề */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 10.5,
                   fontWeight: 700,
-                  background: T.teal + "1A",
-                  color: T.teal,
-                  padding: "2px 8px",
-                  borderRadius: 10,
-                  textTransform: "uppercase",
+                  background: currentCard.tag.includes("Cảnh báo")
+                    ? "#FEF3C7"
+                    : currentCard.tag.includes("SGK")
+                    ? "#E0F2FE"
+                    : "#F1F5F9",
+                  color: currentCard.tag.includes("Cảnh báo")
+                    ? "#B45309"
+                    : currentCard.tag.includes("SGK")
+                    ? "#0369A1"
+                    : "#475569",
+                  padding: "4px 10px",
+                  borderRadius: 12,
                 }}
               >
                 {currentCard.tag}
               </span>
-              <span style={{ fontSize: 11, color: T.inkSoft }}>
-                Vuốt trái/phải hoặc bấm nút bên dưới
+              <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>
+                💡 Tình huống thực tế
               </span>
             </div>
 
-            <h3 style={{ margin: "4px 0 10px", fontSize: 16.5, fontWeight: 800, color: T.ink }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800, color: "#0F172A", lineHeight: 1.35 }}>
               {currentCard.title}
             </h3>
 
-            <p style={{ fontSize: 13, color: T.ink, lineHeight: 1.55, margin: "0 0 14px", minHeight: 64 }}>
+            {/* Khung nội dung câu chuyện / tình huống thân thiện */}
+            <div
+              style={{
+                background: "#F8FAFC",
+                border: "1px solid #EDF2F7",
+                borderRadius: 14,
+                padding: "14px 16px",
+                fontSize: 13.5,
+                color: "#334155",
+                lineHeight: 1.6,
+                marginBottom: 14,
+              }}
+            >
               {currentCard.situation}
-            </p>
+            </div>
 
             {/* Hướng dẫn thao tác vuốt tinh gọn trong thẻ */}
             <div
@@ -574,17 +669,16 @@ export default function SwipeGame({ onAsk, T }) {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                paddingTop: 10,
-                borderTop: `1px dashed ${T.border}`,
+                paddingTop: 8,
                 fontSize: 11,
-                color: T.inkSoft,
+                color: "#94A3B8",
               }}
             >
-              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#DC2626", fontWeight: 600 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#EF4444", fontWeight: 600 }}>
                 <ArrowLeft size={13} /> Vuốt Trái
               </span>
-              <span style={{ opacity: 0.65, fontSize: 10.5 }}>kéo thẻ hoặc bấm bên dưới</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#059669", fontWeight: 600 }}>
+              <span style={{ opacity: 0.7 }}>kéo thẻ hoặc bấm nút dưới</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "#10B981", fontWeight: 600 }}>
                 Vuốt Phải <ArrowRight size={13} />
               </span>
             </div>
@@ -690,19 +784,18 @@ export default function SwipeGame({ onAsk, T }) {
           </div>
 
           {/* 2 Nút Bấm Lựa Chọn Hành Động */}
-          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <button
               onClick={() => handleSwipe("left")}
               disabled={!!lastFeedback}
               style={{
-                flex: 1,
-                padding: "12px 14px",
-                borderRadius: 14,
-                border: "1px solid #FCA5A5",
+                padding: "13px 14px",
+                borderRadius: 16,
+                border: "1.5px solid #FECACA",
                 background: "#FEF2F2",
                 color: "#DC2626",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 12.5,
                 cursor: lastFeedback ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -711,6 +804,7 @@ export default function SwipeGame({ onAsk, T }) {
                 transition: "all 0.15s ease",
                 textAlign: "center",
                 lineHeight: 1.35,
+                boxShadow: "0 2px 8px rgba(239, 68, 68, 0.08)",
               }}
             >
               <XCircle size={18} style={{ flexShrink: 0 }} />
@@ -721,14 +815,13 @@ export default function SwipeGame({ onAsk, T }) {
               onClick={() => handleSwipe("right")}
               disabled={!!lastFeedback}
               style={{
-                flex: 1,
-                padding: "12px 14px",
-                borderRadius: 14,
-                border: "1px solid #6EE7B7",
+                padding: "13px 14px",
+                borderRadius: 16,
+                border: "1.5px solid #A7F3D0",
                 background: "#ECFDF5",
                 color: "#059669",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 12.5,
                 cursor: lastFeedback ? "not-allowed" : "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -737,6 +830,7 @@ export default function SwipeGame({ onAsk, T }) {
                 transition: "all 0.15s ease",
                 textAlign: "center",
                 lineHeight: 1.35,
+                boxShadow: "0 2px 8px rgba(16, 185, 129, 0.08)",
               }}
             >
               <span>{currentCard.right.action}</span>

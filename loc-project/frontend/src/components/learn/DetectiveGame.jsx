@@ -166,17 +166,18 @@ export default function DetectiveGame({ onAsk, T }) {
         })}
       </div>
 
-      {/* Bảng Chỉ Số Thám Tử */}
+      {/* Bảng Chỉ Số Thám Tử Gamified */}
       <div
         style={{
-          background: T.card,
-          border: `1px solid ${T.border}`,
-          borderRadius: 14,
+          background: "#FFFFFF",
+          border: "1px solid #E2E8F0",
+          borderRadius: 18,
           padding: "12px 16px",
+          boxShadow: "0 4px 14px -2px rgba(0, 0, 0, 0.04)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+          gap: 12,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -184,21 +185,22 @@ export default function DetectiveGame({ onAsk, T }) {
             style={{
               width: 38,
               height: 38,
-              borderRadius: 10,
+              borderRadius: 12,
               background: "#FEF3C7",
               color: "#D97706",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
-            <Search size={20} />
+            <Search size={19} />
           </div>
           <div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: "uppercase" }}>
-              Nhiệm vụ Thám tử
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#64748B" }}>
+              Nhiệm Vụ Thám Tử
             </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: T.ink }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
               Đã vạch trần:{" "}
               <span style={{ color: isCaseCompleted ? "#059669" : "#D97706" }}>
                 {currentDiscovered.length} / {activeCase.totalTraps} cạm bẫy
@@ -207,11 +209,19 @@ export default function DetectiveGame({ onAsk, T }) {
           </div>
         </div>
 
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.inkSoft, textTransform: "uppercase" }}>
+        <div
+          style={{
+            background: "#EFF6FF",
+            border: "1px solid #DBEAFE",
+            borderRadius: 12,
+            padding: "6px 12px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase" }}>
             Điểm Thám Tử
           </div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#2563EB" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#1D4ED8" }}>
             +{detectiveScore} XP
           </div>
         </div>
