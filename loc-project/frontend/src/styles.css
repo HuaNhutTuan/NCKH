@@ -321,6 +321,15 @@ button {
   border-radius: 4px;
 }
 
+/* Hide scrollbars cleanly for horizontal tab bars */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Mobile Screens (Phone portrait & small screens) */
 @media (max-width: 520px) {
   html, body {

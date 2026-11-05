@@ -656,14 +656,25 @@ export default function LearnTab({ onAsk, stats, transactions }) {
         </p>
       </div>
 
-      {/* Sub-tab Navigation */}
-      <div style={{
-        display: "flex", gap: 4, background: T.border, borderRadius: 12,
-        padding: 3, marginBottom: 14, overflowX: "auto"
-      }}>
+      {/* Sub-tab Navigation: Thanh trượt thẻ bài mượt mà, không bị co ép đè chữ */}
+      <div
+        className="no-scrollbar"
+        style={{
+          display: "flex",
+          gap: 6,
+          background: T.border,
+          borderRadius: 14,
+          padding: 4,
+          marginBottom: 14,
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
         {[
-          { id: "swipe", label: "🎮 Gạt Thẻ 60s", Icon: Zap },
-          { id: "detective", label: "🔍 Soi Bẫy Hợp Đồng", Icon: Search },
+          { id: "swipe", label: "Gạt Thẻ 60s", Icon: Zap },
+          { id: "detective", label: "Soi Bẫy Hợp Đồng", Icon: Search },
           { id: "simulator", label: "Mô phỏng Trả góp", Icon: Calculator },
           { id: "quiz", label: "Trắc nghiệm FLS", Icon: HelpCircle },
           { id: "lessons", label: "Sổ tay Vi mô", Icon: BookOpen },
@@ -675,17 +686,26 @@ export default function LearnTab({ onAsk, stats, transactions }) {
               key={id}
               onClick={() => setSubTab(id)}
               style={{
-                flex: 1, minWidth: 70, display: "flex", alignItems: "center", justifyContent: "center",
-                gap: 5, padding: "8px 6px", borderRadius: 9, border: "none", cursor: "pointer",
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: "none",
+                cursor: "pointer",
                 background: active ? T.card : "transparent",
                 color: active ? T.tealDark : T.inkSoft,
                 fontWeight: active ? 700 : 500,
-                fontSize: 11, transition: "all 0.15s ease",
-                whiteSpace: "nowrap"
+                fontSize: 11.5,
+                transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
+                boxShadow: active ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
               }}
             >
-              <Icon size={14} color={active ? T.teal : T.inkSoft} />
-              <span>{label}</span>
+              <Icon size={14} color={active ? T.teal : T.inkSoft} style={{ flexShrink: 0 }} />
+              <span style={{ whiteSpace: "nowrap" }}>{label}</span>
             </button>
           );
         })}
