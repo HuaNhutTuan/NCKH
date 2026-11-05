@@ -3303,14 +3303,22 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 10px" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>Thêm giao dịch</div>
+          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Space Grotesk',sans-serif" }}>
+            {inputTab === "voice"
+              ? "Nói để ghi"
+              : inputTab === "image"
+              ? "Chụp ảnh hóa đơn"
+              : inputTab === "text"
+              ? "Nhập câu lệnh"
+              : "Thêm giao dịch"}
+          </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Input-mode tabs - chỉ hiển thị nếu mở từ tính năng khác ngoài nút Thêm thủ công */}
-        {initialTab !== "manual" && (
+        {/* Input-mode tabs - ẩn khi mở trực tiếp tính năng Giọng nói, Chụp ảnh hóa đơn hoặc Thủ công */}
+        {initialTab !== "manual" && initialTab !== "voice" && initialTab !== "image" && (
           <div style={{ display: "flex", gap: 5, padding: "0 16px 12px", borderBottom: `1px solid ${T.border}` }}>
             {TABS.map(({ id, label, Icon }) => {
               const isVoiceDisabled = id === "voice" && !speechSupported;
