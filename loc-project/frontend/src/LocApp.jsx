@@ -12,6 +12,7 @@ import {
   ShieldCheck, ShieldAlert, Settings, Calendar, Info, Search, Pencil, User,
   Eye, EyeOff, ChevronDown, ChevronUp, Check,
   HelpCircle, MoreVertical, Globe, ChevronsRight, Car, Receipt,
+  SwitchCamera, RotateCcw, Upload,
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { transactionsApi, budgetsApi, chatApi, multimodalApi, settingsApi, knowledgeApi } from "./api";
@@ -3103,6 +3104,14 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
   const recognitionRef = useRef(null);
   const imageInputRef = useRef(null);
 
+  // ── Camera trực tiếp trong Web App ──────────────────────────────────────────
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState("environment"); // "environment" (sau) | "user" (trước)
+  const [cameraError, setCameraError] = useState("");
+  const [isCapturing, setIsCapturing] = useState(false);
+
   function handleManualSubmit() {
     const amt = parseThousands(form.amount);
     if (!amt || amt <= 0) {
@@ -3240,7 +3249,81 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
     }
   }, [initialTab]);
 
-  // ── Image preview ────────────────────────────────────────────────────────────
+  // ── Camera trực tiếp: Dừng & Khởi động ──────────────────────────────────────
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        console.error("Lỗi dừng camera:", e);
+      }
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  }, []);
+
+  const startCamera = useCallback(async (facing = cameraFacing) => {
+    setCameraError("");
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (e) {}
+      streamRef.current = null;
+    }
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setCameraError("Trình duyệt không hỗ trợ mở camera trực tiếp. Bạn vui lòng tải ảnh từ thiết bị.");
+      setCameraActive(false);
+      return;
+    }
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+      setCameraActive(true);
+    } catch (err) {
+      console.warn("Không mở được camera với facingMode:", facing, err);
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        streamRef.current = fallbackStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          videoRef.current.play().catch(() => {});
+        }
+        setCameraActive(true);
+      } catch (fallbackErr) {
+        console.error("Lỗi truy cập camera:", fallbackErr);
+        setCameraError("Không thể truy cập camera. Vui lòng cấp quyền camera trong cài đặt trình duyệt hoặc tải ảnh từ máy.");
+        setCameraActive(false);
+      }
+    }
+  }, [cameraFacing]);
+
+  // Quản lý bật/tắt camera theo tab và trạng thái xem trước ảnh
+  useEffect(() => {
+    if (inputTab === "image" && !imagePreview && !aiResult) {
+      startCamera(cameraFacing);
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [inputTab, imagePreview, aiResult, cameraFacing, startCamera, stopCamera]);
+
   function handleImageChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -3248,7 +3331,47 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
     setImagePreview(URL.createObjectURL(file));
     setAiResult(null);
     setAiError("");
+    stopCamera();
   }
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    setIsCapturing(true);
+    try {
+      const video = videoRef.current;
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `receipt_${Date.now()}.jpg`, { type: "image/jpeg" });
+          setImageFile(file);
+          setImagePreview(URL.createObjectURL(blob));
+          setAiResult(null);
+          setAiError("");
+          stopCamera();
+        }
+        setIsCapturing(false);
+      }, "image/jpeg", 0.95);
+    } catch (err) {
+      console.error("Lỗi khi chụp ảnh từ camera:", err);
+      setIsCapturing(false);
+    }
+  };
+
+  const toggleCameraFacing = () => {
+    const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+    setCameraFacing(nextFacing);
+  };
+
+  const handleModalClose = () => {
+    stopCamera();
+    onClose();
+  };
 
   // ── AI parse ─────────────────────────────────────────────────────────────────
   async function runAiParse() {
@@ -3312,7 +3435,7 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
               ? "Nhập câu lệnh"
               : "Thêm giao dịch"}
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
+          <button onClick={handleModalClose} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkSoft, padding: 4 }}>
             <X size={20} />
           </button>
         </div>
@@ -3816,53 +3939,274 @@ function AddTxModal({ form, setForm, onClose, onSubmit, token, onSaveMultiple, s
             </div>
           )}
 
-          {/* ── TAB: Image / OCR ────────────────────────────────────── */}
+          {/* ── TAB: Image / Camera Trực Tiếp & OCR ─────────────── */}
           {inputTab === "image" && !aiResult && (
             <>
               <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
+
               {!imagePreview ? (
-                <button
-                  onClick={() => imageInputRef.current?.click()}
-                  style={{
-                    width: "100%", padding: "30px 0", border: `2px dashed ${T.border}`,
-                    borderRadius: 12, background: T.card, cursor: "pointer",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-                    color: T.inkSoft, marginBottom: 10,
-                  }}
-                >
-                  <ImagePlus size={32} color={T.teal} />
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>Chọn ảnh hóa đơn / bill CK</span>
-                  <span style={{ fontSize: 11 }}>JPEG, PNG, WebP · Tối đa 10MB</span>
-                </button>
-              ) : (
-                <div style={{ marginBottom: 10, position: "relative" }}>
-                  <img src={imagePreview} alt="preview" style={{ width: "100%", borderRadius: 10, maxHeight: 200, objectFit: "contain", background: "#eee" }} />
-                  <button
-                    onClick={() => { setImageFile(null); setImagePreview(null); setAiResult(null); setAiError(""); }}
-                    style={{
-                      position: "absolute", top: 6, right: 6, background: T.brick, border: "none",
-                      borderRadius: "50%", width: 24, height: 24, cursor: "pointer", color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    <X size={12} />
-                  </button>
+                <div>
+                  {/* Khung ngắm Camera trực tiếp */}
+                  <div style={{
+                    position: "relative",
+                    width: "100%",
+                    height: 280,
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    background: "#18221F",
+                    marginBottom: 12,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      onLoadedMetadata={() => videoRef.current?.play().catch(() => {})}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: cameraActive ? "block" : "none",
+                      }}
+                    />
+
+                    {/* Lớp overlay khung ngắm căn chỉnh hóa đơn */}
+                    {cameraActive && (
+                      <div style={{
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        padding: 16,
+                      }}>
+                        {/* 4 góc căn chỉnh */}
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <div style={{ width: 24, height: 24, borderTop: "3px solid #fff", borderLeft: "3px solid #fff", borderRadius: "4px 0 0 0" }} />
+                          <div style={{ width: 24, height: 24, borderTop: "3px solid #fff", borderRight: "3px solid #fff", borderRadius: "0 4px 0 0" }} />
+                        </div>
+                        <div style={{
+                          alignSelf: "center",
+                          background: "rgba(0,0,0,0.5)",
+                          color: "#fff",
+                          fontSize: 11,
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          backdropFilter: "blur(2px)",
+                        }}>
+                          Căn chỉnh hóa đơn vào giữa khung hình
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <div style={{ width: 24, height: 24, borderBottom: "3px solid #fff", borderLeft: "3px solid #fff", borderRadius: "0 0 0 4px" }} />
+                          <div style={{ width: 24, height: 24, borderBottom: "3px solid #fff", borderRight: "3px solid #fff", borderRadius: "0 0 4px 0" }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nút lật/đổi camera (góc trên bên phải) */}
+                    {cameraActive && (
+                      <button
+                        type="button"
+                        onClick={toggleCameraFacing}
+                        title="Đổi camera trước/sau"
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          background: "rgba(0,0,0,0.55)",
+                          color: "#fff",
+                          border: "1px solid rgba(255,255,255,0.25)",
+                          borderRadius: "50%",
+                          width: 34,
+                          height: 34,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          zIndex: 2,
+                        }}
+                      >
+                        <SwitchCamera size={16} />
+                      </button>
+                    )}
+
+                    {/* Màn hình chờ hoặc thông báo lỗi camera */}
+                    {!cameraActive && (
+                      <div style={{ padding: "16px 20px", textAlign: "center", color: "#DAD5C4" }}>
+                        {cameraError ? (
+                          <>
+                            <AlertTriangle size={32} color={T.gold} style={{ margin: "0 auto 8px" }} />
+                            <div style={{ fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 }}>{cameraError}</div>
+                            <button
+                              type="button"
+                              onClick={() => startCamera(cameraFacing)}
+                              style={{
+                                background: T.teal,
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "7px 14px",
+                                color: "#fff",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Thử lại camera
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <Loader2 size={28} color={T.teal} style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px" }} />
+                            <div style={{ fontSize: 12 }}>Đang mở camera thiết bị...</div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nút chụp tròn to ở giữa & nút tải ảnh từ thiết bị */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                    {cameraActive && (
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        disabled={isCapturing}
+                        title="Chụp ảnh hóa đơn"
+                        style={{
+                          width: 66,
+                          height: 66,
+                          borderRadius: "50%",
+                          background: "#fff",
+                          border: `4px solid ${T.teal}`,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 4px 14px rgba(31,111,99,0.35)",
+                          transition: "transform 0.1s",
+                        }}
+                      >
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: T.teal }} />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: T.tealDark,
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 12px",
+                      }}
+                    >
+                      <Upload size={14} color={T.teal} /> Hoặc tải ảnh có sẵn từ thiết bị
+                    </button>
+                  </div>
                 </div>
-              )}
-              {aiError && <div style={{ color: T.brick, fontSize: 12, marginBottom: 8 }}>{aiError}</div>}
-              {imageFile && (
-                <button
-                  onClick={runAiParse}
-                  disabled={aiLoading}
-                  style={{
-                    width: "100%", background: aiLoading ? T.border : T.teal,
-                    border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700,
-                    fontSize: 13, color: "#fff", cursor: aiLoading ? "default" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  }}
-                >
-                  {aiLoading ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> Đang phân tích ảnh...</> : <><Wand2 size={15} /> Phân tích hóa đơn</>}
-                </button>
+              ) : (
+                /* Màn hình xem lại ảnh vừa chụp hoặc vừa chọn */
+                <div>
+                  <div style={{ position: "relative", marginBottom: 12, borderRadius: 14, overflow: "hidden", maxHeight: 300, background: "#18221F", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={imagePreview} alt="preview" style={{ width: "100%", maxHeight: 300, objectFit: "contain", display: "block" }} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                        setAiResult(null);
+                        setAiError("");
+                      }}
+                      title="Xóa và chụp lại"
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        background: "rgba(0,0,0,0.65)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 30,
+                        height: 30,
+                        cursor: "pointer",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  {aiError && <div style={{ color: T.brick, fontSize: 12, marginBottom: 8, textAlign: "center" }}>{aiError}</div>}
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                        setAiResult(null);
+                        setAiError("");
+                      }}
+                      disabled={aiLoading}
+                      style={{
+                        flex: 1,
+                        padding: "11px 0",
+                        borderRadius: 10,
+                        border: `1px solid ${T.border}`,
+                        background: T.card,
+                        color: T.ink,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: aiLoading ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <RotateCcw size={15} /> Chụp lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={runAiParse}
+                      disabled={aiLoading}
+                      style={{
+                        flex: 2,
+                        padding: "11px 0",
+                        borderRadius: 10,
+                        border: "none",
+                        background: aiLoading ? T.border : T.teal,
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: aiLoading ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      {aiLoading ? (
+                        <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Đang phân tích...</>
+                      ) : (
+                        <><Wand2 size={16} /> Phân tích hóa đơn</>
+                      )}
+                    </button>
+                  </div>
+                </div>
               )}
             </>
           )}
